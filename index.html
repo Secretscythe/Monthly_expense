@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpendFlow | Monthly Expense Tracker</title>
+  <meta name="description" content="A simple, elegant, and modern monthly expense tracker to monitor spending, manage budgets, and visualize personal finances." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-background">
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+  </div>
+
+  <div class="app-container">
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">SpendFlow</h1>
+          <p class="brand-subtitle">Smart Monthly Expense Tracker</p>
+        </div>
+      </div>
+
+      <!-- Month Selector Controls -->
+      <div class="month-navigator">
+        <button id="prev-month-btn" class="icon-btn" title="Previous Month" aria-label="Previous Month">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <div class="current-month-display">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="18" y2="10"></line></svg>
+          <span id="active-month-label">October 2026</span>
+        </div>
+        <button id="next-month-btn" class="icon-btn" title="Next Month" aria-label="Next Month">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+        <button id="today-month-btn" class="pill-btn secondary-pill" title="Jump to Current Month">Current</button>
+      </div>
+
+      <div class="header-actions">
+        <button id="export-btn" class="pill-btn secondary-pill" title="Export monthly data to CSV">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>Export CSV</span>
+        </button>
+        <button id="open-add-modal-btn" class="pill-btn primary-pill">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>Add Expense</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- KPI Summary Cards -->
+    <section class="kpi-grid">
+      <!-- Total Spent Card -->
+      <div class="kpi-card spent-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Total Spent</span>
+          <div class="kpi-badge badge-spent">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            <span id="spent-count-badge">0 items</span>
+          </div>
+        </div>
+        <div class="kpi-value" id="kpi-total-spent">$0.00</div>
+        <div class="kpi-subtext" id="kpi-daily-avg">Daily average: $0.00 / day</div>
+      </div>
+
+      <!-- Monthly Budget Card -->
+      <div class="kpi-card budget-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Monthly Budget</span>
+          <button id="edit-budget-btn" class="edit-text-btn" title="Edit Budget">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+            Edit
+          </button>
+        </div>
+        <div class="kpi-value" id="kpi-budget-amount">$0.00</div>
+        <div class="budget-progress-track">
+          <div class="budget-progress-fill" id="budget-progress-bar" style="width: 0%;"></div>
+        </div>
+        <div class="kpi-subtext space-between">
+          <span id="kpi-budget-percent">0% used</span>
+          <span id="kpi-budget-cap-label">Target: $0</span>
+        </div>
+      </div>
+
+      <!-- Remaining Balance Card -->
+      <div class="kpi-card remaining-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Remaining Balance</span>
+          <div class="kpi-badge badge-safe" id="budget-status-pill">
+            <span>On Track</span>
+          </div>
+        </div>
+        <div class="kpi-value" id="kpi-remaining-amount">$0.00</div>
+        <div class="kpi-subtext" id="kpi-safe-daily-spend">Safe to spend: $0.00 / day</div>
+      </div>
+    </section>
+
+    <!-- Main Content Area: Left breakdown & chart, Right transaction logs -->
+    <main class="main-layout">
+      <!-- Left Column: Visual Insights & Categories -->
+      <div class="analytics-column">
+        <!-- Visual Spending Chart Card -->
+        <div class="glass-panel chart-panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Spending Breakdown</h2>
+              <p class="panel-subtitle">By expense categories</p>
+            </div>
+            <div class="legend-indicator" id="category-count-label">0 categories</div>
+          </div>
+
+          <div class="chart-container">
+            <div class="donut-chart-wrapper">
+              <svg id="donut-chart-svg" viewBox="0 0 200 200" width="180" height="180">
+                <circle class="donut-bg" cx="100" cy="100" r="75" />
+                <g id="donut-segments"></g>
+              </svg>
+              <div class="donut-center-info">
+                <span class="center-caption">Total</span>
+                <span class="center-amount" id="chart-center-amount">$0</span>
+              </div>
+            </div>
+
+            <!-- Dynamic Category Legend / Bars -->
+            <div class="category-bars-list" id="category-breakdown-list">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Summary Mini-Stats -->
+        <div class="glass-panel mini-stats-panel">
+          <h3 class="panel-title-sm">Quick Insights</h3>
+          <div class="mini-stat-row">
+            <span class="mini-stat-label">Top Category</span>
+            <span class="mini-stat-val font-semibold" id="top-category-name">—</span>
+          </div>
+          <div class="mini-stat-row">
+            <span class="mini-stat-label">Highest Single Expense</span>
+            <span class="mini-stat-val" id="highest-expense-label">—</span>
+          </div>
+          <div class="mini-stat-row">
+            <span class="mini-stat-label">Transactions this Month</span>
+            <span class="mini-stat-val" id="total-txn-count">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Transactions & Logging -->
+      <div class="transactions-column">
+        <div class="glass-panel transactions-panel">
+          <div class="transactions-header">
+            <div>
+              <h2 class="panel-title">Expense History</h2>
+              <p class="panel-subtitle" id="history-subtitle">Showing all transactions for this month</p>
+            </div>
+            <div class="table-tools">
+              <!-- Search Input -->
+              <div class="search-box">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="expense-search-input" placeholder="Search expenses..." />
+              </div>
+              <!-- Category Filter Dropdown -->
+              <select id="category-filter-select" class="custom-select">
+                <option value="ALL">All Categories</option>
+                <option value="Food & Dining">🍔 Food & Dining</option>
+                <option value="Housing & Rent">🏠 Housing & Rent</option>
+                <option value="Utilities & Bills">⚡ Utilities & Bills</option>
+                <option value="Transportation">🚗 Transportation</option>
+                <option value="Shopping & Retail">🛍️ Shopping & Retail</option>
+                <option value="Entertainment">🎬 Entertainment</option>
+                <option value="Healthcare">💊 Healthcare</option>
+                <option value="Education">📚 Education</option>
+                <option value="Personal Care">✨ Personal Care</option>
+                <option value="Miscellaneous">📦 Miscellaneous</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Transaction List Container -->
+          <div class="transactions-list-wrap">
+            <div id="transactions-container" class="transactions-list">
+              <!-- Rendered via JS -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="empty-state-card hidden">
+              <div class="empty-icon-circle">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                  <path d="M7 15h0M2 9.5h20"></path>
+                </svg>
+              </div>
+              <h3 class="empty-title">No expenses logged</h3>
+              <p class="empty-desc">You haven't added any expenses for this month yet. Start tracking with the button below!</p>
+              <button id="empty-add-btn" class="pill-btn primary-pill mt-3">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Add Your First Expense
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: Add / Edit Expense -->
+  <div id="expense-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title" class="modal-heading">Add New Expense</h3>
+        <button id="close-modal-btn" class="icon-btn close-btn" aria-label="Close dialog">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <form id="expense-form" class="modal-form" autocomplete="off">
+        <input type="hidden" id="edit-expense-id" value="" />
+
+        <div class="form-group">
+          <label for="form-title" class="form-label">Expense Description <span class="required">*</span></label>
+          <input type="text" id="form-title" class="form-input" placeholder="e.g. Grocery run at Trader Joe's" required />
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="form-amount" class="form-label">Amount ($) <span class="required">*</span></label>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">$</span>
+              <input type="number" id="form-amount" class="form-input with-prefix" placeholder="0.00" step="0.01" min="0.01" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="form-date" class="form-label">Date <span class="required">*</span></label>
+            <input type="date" id="form-date" class="form-input" required />
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="form-category" class="form-label">Category <span class="required">*</span></label>
+            <select id="form-category" class="form-input custom-select" required>
+              <option value="Food & Dining">🍔 Food & Dining</option>
+              <option value="Housing & Rent">🏠 Housing & Rent</option>
+              <option value="Utilities & Bills">⚡ Utilities & Bills</option>
+              <option value="Transportation">🚗 Transportation</option>
+              <option value="Shopping & Retail">🛍️ Shopping & Retail</option>
+              <option value="Entertainment">🎬 Entertainment</option>
+              <option value="Healthcare">💊 Healthcare</option>
+              <option value="Education">📚 Education</option>
+              <option value="Personal Care">✨ Personal Care</option>
+              <option value="Miscellaneous">📦 Miscellaneous</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="form-payment" class="form-label">Payment Method</label>
+            <select id="form-payment" class="form-input custom-select">
+              <option value="Credit Card">💳 Credit Card</option>
+              <option value="Debit Card">💳 Debit Card</option>
+              <option value="Bank Transfer">🏦 Bank Transfer</option>
+              <option value="Cash">💵 Cash</option>
+              <option value="Apple / Google Pay">📱 Mobile Pay</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="form-notes" class="form-label">Notes (Optional)</label>
+          <input type="text" id="form-notes" class="form-input" placeholder="Optional details, receipt notes, etc." />
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="cancel-modal-btn" class="pill-btn secondary-pill">Cancel</button>
+          <button type="submit" id="save-expense-btn" class="pill-btn primary-pill">Save Expense</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Monthly Budget -->
+  <div id="budget-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="budget-modal-title">
+    <div class="modal-card modal-card-sm">
+      <div class="modal-header">
+        <h3 id="budget-modal-title" class="modal-heading">Set Monthly Budget</h3>
+        <button id="close-budget-modal-btn" class="icon-btn close-btn" aria-label="Close dialog">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <form id="budget-form" class="modal-form">
+        <p class="modal-help-text">Set your spending ceiling for <strong id="budget-target-month">October 2026</strong>. SpendFlow will track your pace and keep you within limits.</p>
+        <div class="form-group mt-3">
+          <label for="budget-input" class="form-label">Target Budget Amount ($)</label>
+          <div class="input-prefix-wrap">
+            <span class="input-prefix">$</span>
+            <input type="number" id="budget-input" class="form-input with-prefix" placeholder="3000.00" step="50" min="1" required />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="cancel-budget-modal-btn" class="pill-btn secondary-pill">Cancel</button>
+          <button type="submit" class="pill-btn primary-pill">Update Budget</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="toast hidden">
+    <div class="toast-icon" id="toast-icon">✓</div>
+    <span id="toast-message">Action completed successfully</span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
