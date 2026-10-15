@@ -4,6 +4,10 @@ A simple, fast, and modern monthly expense tracker built with vanilla HTML, CSS,
 
 ![SpendFlow Preview](https://img.shields.io/badge/Status-Complete-success?style=for-the-badge)
 ![Tech Stack](https://img.shields.io/badge/Stack-HTML5%20%7C%20CSS3%20%7C%20Vanilla%20JS-blue?style=for-the-badge)
+[![Live Demo](https://img.shields.io/badge/Demo-Live%20Website-brightgreen?style=for-the-badge&logo=github)](https://secretscythe.github.io/Monthly_expense/)
+
+🌐 **Live URL**: [https://secretscythe.github.io/Monthly_expense/](https://secretscythe.github.io/Monthly_expense/)
+
 
 ---
 
