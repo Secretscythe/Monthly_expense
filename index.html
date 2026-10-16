@@ -35,7 +35,7 @@
 
       <!-- Month Navigation Controls -->
       <div class="month-navigator">
-        <button id="prev-month-btn" class="nav-btn" aria-label="Previous Month" title="Previous Month">
+        <button type="button" id="prev-month-btn" class="nav-btn" aria-label="Previous Month" title="Previous Month">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
 
@@ -43,16 +43,16 @@
           <span id="current-month-label">October 2026</span>
         </div>
 
-        <button id="next-month-btn" class="nav-btn" aria-label="Next Month" title="Next Month">
+        <button type="button" id="next-month-btn" class="nav-btn" aria-label="Next Month" title="Next Month">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
 
-        <button id="today-btn" class="pill-btn secondary-pill" title="Jump to Current Month">Today</button>
+        <button type="button" id="today-btn" class="pill-btn secondary-pill" title="Jump to Current Month">Today</button>
       </div>
 
       <!-- Header Actions -->
       <div class="header-actions">
-        <button id="export-csv-btn" class="pill-btn secondary-pill" title="Export monthly records to CSV">
+        <button type="button" id="export-csv-btn" class="pill-btn secondary-pill" title="Export monthly records to CSV">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           <span>Export CSV</span>
         </button>
@@ -106,40 +106,43 @@
       </div>
     </section>
 
-    <!-- Add / Edit Expense On-Screen Card (Serves both Logging and Editing) -->
-    <section id="add-expense-section" class="glass-card add-expense-section">
+    <!-- Super-Fast On-Screen Quick Log Entry (No Form Tag, No Flash, Fast Day Select) -->
+    <section id="add-expense-section" class="glass-card quick-log-card">
       <div class="section-header">
         <div class="section-title-wrap">
           <div id="form-section-icon" class="section-icon">⚡</div>
           <div>
-            <h2 id="form-section-title" class="section-title">Log New Expense</h2>
-            <p id="form-section-subtitle" class="section-subtitle">Record an expense for <span id="form-month-hint" class="font-bold">October 2026</span></p>
+            <h2 id="form-section-title" class="section-title">Quick Log Expense</h2>
+            <p id="form-section-subtitle" class="section-subtitle">
+              Log for <span id="form-month-hint" class="font-bold">October 2026</span> • Press <kbd class="kbd-hint">Enter ↵</kbd> to save instantly
+            </p>
           </div>
         </div>
       </div>
 
-      <form id="add-expense-form" class="add-expense-form" autocomplete="off" novalidate>
+      <!-- Pure div row with ZERO form submit action to prevent any iframe white flashing -->
+      <div class="quick-log-row">
         <input type="hidden" id="editing-expense-id" value="" />
 
-        <!-- Description -->
-        <div class="form-group flex-2">
-          <label for="expense-title-input" class="form-label">Description <span class="req">*</span></label>
-          <input type="text" id="expense-title-input" class="form-input" placeholder="e.g. Grocery run, Electric bill, Dinner" required />
+        <!-- 1. Description -->
+        <div class="input-block flex-2">
+          <label for="expense-title-input" class="quick-label">1. What did you buy?</label>
+          <input type="text" id="expense-title-input" class="quick-input" placeholder="e.g. Lunch, Groceries, Gas, Coffee" />
         </div>
 
-        <!-- Amount -->
-        <div class="form-group flex-1">
-          <label for="expense-amount-input" class="form-label">Amount ($) <span class="req">*</span></label>
+        <!-- 2. Amount -->
+        <div class="input-block flex-1">
+          <label for="expense-amount-input" class="quick-label">2. Amount ($)</label>
           <div class="input-with-prefix">
             <span class="input-prefix">$</span>
-            <input type="number" id="expense-amount-input" class="form-input with-prefix" placeholder="0.00" step="0.01" min="0.01" required />
+            <input type="number" id="expense-amount-input" class="quick-input with-prefix" placeholder="0.00" step="0.01" min="0.01" />
           </div>
         </div>
 
-        <!-- Category -->
-        <div class="form-group flex-1">
-          <label for="expense-category-input" class="form-label">Category <span class="req">*</span></label>
-          <select id="expense-category-input" class="form-input custom-select" required>
+        <!-- 3. Category -->
+        <div class="input-block flex-1">
+          <label for="expense-category-input" class="quick-label">3. Category</label>
+          <select id="expense-category-input" class="quick-input custom-select">
             <option value="Food & Dining">🍔 Food & Dining</option>
             <option value="Housing & Rent">🏠 Housing & Rent</option>
             <option value="Utilities & Bills">⚡ Utilities & Bills</option>
@@ -153,42 +156,37 @@
           </select>
         </div>
 
-        <!-- Date -->
-        <div class="form-group flex-1">
-          <label for="expense-date-input" class="form-label">Date <span class="req">*</span></label>
-          <input type="date" id="expense-date-input" class="form-input" required />
+        <!-- 4. Quick Day of Month (Fast, No clunky calendar popup!) -->
+        <div class="input-block flex-1">
+          <label for="expense-day-input" class="quick-label">4. Day of Month</label>
+          <div class="day-input-group">
+            <input type="number" id="expense-day-input" class="quick-input day-number-input" min="1" max="31" placeholder="Day" title="Day of month (1-31)" />
+            <div class="day-quick-pills">
+              <button type="button" id="day-pill-today" class="day-pill active" title="Use Today">Today</button>
+              <button type="button" id="day-pill-yesterday" class="day-pill" title="Use Yesterday">Yest</button>
+            </div>
+          </div>
         </div>
 
-        <!-- Payment Method -->
-        <div class="form-group flex-1">
-          <label for="expense-payment-input" class="form-label">Payment</label>
-          <select id="expense-payment-input" class="form-input custom-select">
-            <option value="Credit Card">💳 Credit Card</option>
-            <option value="Debit Card">💳 Debit Card</option>
-            <option value="Bank Transfer">🏦 Bank Transfer</option>
-            <option value="Cash">💵 Cash</option>
-            <option value="Mobile / UPI">📱 Mobile / UPI</option>
-          </select>
-        </div>
-
-        <!-- Submit & Cancel Buttons -->
-        <div class="form-group form-submit-wrap">
+        <!-- 5. Submit / Save Button -->
+        <div class="input-block flex-auto">
+          <label class="quick-label">&nbsp;</label>
           <div class="form-btn-group">
-            <button type="submit" id="add-expense-submit-btn" class="pill-btn primary-pill submit-btn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              <span id="submit-btn-text">Add Expense</span>
+            <button type="button" id="add-expense-submit-btn" class="pill-btn primary-pill submit-btn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span id="submit-btn-text">Log Expense</span>
             </button>
             <button type="button" id="cancel-edit-btn" class="pill-btn secondary-pill submit-btn hidden" title="Cancel editing">
               Cancel
             </button>
           </div>
         </div>
-      </form>
+      </div>
 
       <!-- Instant Validation Error Message Banner -->
       <div id="form-error-banner" class="error-banner hidden" role="alert">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <span id="form-error-text">Please enter a valid description and amount.</span>
+        <span id="form-error-text">Please enter a description and amount.</span>
       </div>
     </section>
 
@@ -277,7 +275,7 @@
           </svg>
         </div>
         <h4 class="empty-state-title">No expenses recorded</h4>
-        <p class="empty-state-desc">You haven't logged any expenses for this month yet. Use the "Log New Expense" form above to get started!</p>
+        <p class="empty-state-desc">You haven't logged any expenses for this month yet. Use the quick entry box above to log your first item!</p>
       </div>
     </section>
 

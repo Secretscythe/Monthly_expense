@@ -1,7 +1,7 @@
 /**
  * SpendFlow - Simple & Fast Monthly Expense Tracker
- * Fully inline on-screen inputs (No popups, No modals, No alerts/confirms)
- * 100% compatible with GitHub Pages and Streamlit sandboxed iframes
+ * Super-fast inline entry, zero page reloads, zero white flash
+ * 100% compatible with GitHub Pages and Streamlit Cloud
  */
 
 // Category Palette with thematic icons and colors
@@ -195,19 +195,19 @@ const elements = {
   balanceStatusBadge: document.getElementById('balance-status-badge'),
   kpiSafeDailyAllowance: document.getElementById('kpi-safe-daily-allowance'),
 
-  // Add / Edit Form
+  // Fast Quick Log Section
   addExpenseSection: document.getElementById('add-expense-section'),
   formSectionIcon: document.getElementById('form-section-icon'),
   formSectionTitle: document.getElementById('form-section-title'),
   formSectionSubtitle: document.getElementById('form-section-subtitle'),
   formMonthHint: document.getElementById('form-month-hint'),
-  addExpenseForm: document.getElementById('add-expense-form'),
   editingExpenseId: document.getElementById('editing-expense-id'),
   expenseTitleInput: document.getElementById('expense-title-input'),
   expenseAmountInput: document.getElementById('expense-amount-input'),
   expenseCategoryInput: document.getElementById('expense-category-input'),
-  expenseDateInput: document.getElementById('expense-date-input'),
-  expensePaymentInput: document.getElementById('expense-payment-input'),
+  expenseDayInput: document.getElementById('expense-day-input'),
+  dayPillToday: document.getElementById('day-pill-today'),
+  dayPillYesterday: document.getElementById('day-pill-yesterday'),
   addExpenseSubmitBtn: document.getElementById('add-expense-submit-btn'),
   submitBtnText: document.getElementById('submit-btn-text'),
   cancelEditBtn: document.getElementById('cancel-edit-btn'),
@@ -511,11 +511,11 @@ function renderExpensesList(activeExpenses) {
       <div class="expense-right">
         <span class="expense-amount">-${formatCurrency(item.amount)}</span>
         <div class="action-btns">
-          <button class="action-icon-btn edit-btn" title="Edit on screen" data-id="${item.id}" aria-label="Edit">
+          <button type="button" class="action-icon-btn edit-btn" title="Edit on screen" data-id="${item.id}" aria-label="Edit">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
             <span>Edit</span>
           </button>
-          <button class="action-icon-btn delete-btn" title="Delete expense" data-id="${item.id}" aria-label="Delete">
+          <button type="button" class="action-icon-btn delete-btn" title="Delete expense" data-id="${item.id}" aria-label="Delete">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
             <span class="delete-btn-text"></span>
           </button>
@@ -534,11 +534,9 @@ function renderExpensesList(activeExpenses) {
     deleteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (deleteBtn.classList.contains('confirm-delete')) {
-        // Second click: perform delete
         clearTimeout(deleteConfirmTimeout);
         deleteExpense(item.id);
       } else {
-        // First click: prompt inline confirmation
         deleteBtn.classList.add('confirm-delete');
         deleteBtnText.textContent = 'Delete?';
 
@@ -592,6 +590,21 @@ function handleSaveInlineBudget() {
   showToast(`Monthly budget set to ${formatCurrency(newBudget)}!`);
 }
 
+// Helper to get formatted date string for active month and selected day
+function getConstructedDate(dayNumber) {
+  const year = state.currentDate.getFullYear();
+  const month = state.currentDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  let validDay = parseInt(dayNumber, 10);
+  if (isNaN(validDay) || validDay < 1) validDay = 1;
+  if (validDay > daysInMonth) validDay = daysInMonth;
+
+  const mm = String(month + 1).padStart(2, '0');
+  const dd = String(validDay).padStart(2, '0');
+  return `${year}-${mm}-${dd}`;
+}
+
 // Start Editing an Expense directly in the on-screen form
 function startEditExpense(id) {
   const item = state.expenses.find(e => e.id === id);
@@ -601,20 +614,28 @@ function startEditExpense(id) {
   elements.expenseTitleInput.value = item.title;
   elements.expenseAmountInput.value = item.amount;
   elements.expenseCategoryInput.value = item.category;
-  elements.expenseDateInput.value = item.date;
-  elements.expensePaymentInput.value = item.paymentMethod || 'Credit Card';
 
-  // Update form appearance for editing
+  // Extract day from date (YYYY-MM-DD)
+  if (item.date) {
+    const parts = item.date.split('-');
+    if (parts.length === 3) {
+      elements.expenseDayInput.value = parseInt(parts[2], 10);
+    }
+  }
+
+  elements.dayPillToday.classList.remove('active');
+  elements.dayPillYesterday.classList.remove('active');
+
+  // Update appearance for editing
   elements.addExpenseSection.classList.add('edit-mode');
   elements.formSectionIcon.textContent = '✏️';
   elements.formSectionTitle.textContent = `Edit Expense: "${item.title}"`;
-  elements.formSectionSubtitle.textContent = 'Modify the fields below and click "Save Changes" to update.';
+  elements.formSectionSubtitle.textContent = 'Change values below and press Enter or Save to update.';
   elements.submitBtnText.textContent = 'Save Changes';
   elements.cancelEditBtn.classList.remove('hidden');
 
   hideFormError();
 
-  // Smoothly bring the on-screen form into view
   elements.addExpenseSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
   elements.expenseTitleInput.focus();
 }
@@ -624,32 +645,31 @@ function cancelEditExpense() {
   elements.editingExpenseId.value = '';
   elements.expenseTitleInput.value = '';
   elements.expenseAmountInput.value = '';
-  setDefaultFormDate();
+  setDefaultDay();
 
   elements.addExpenseSection.classList.remove('edit-mode');
   elements.formSectionIcon.textContent = '⚡';
-  elements.formSectionTitle.textContent = 'Log New Expense';
-  elements.formSectionSubtitle.innerHTML = `Record an expense for <span id="form-month-hint" class="font-bold">${elements.currentMonthLabel.textContent}</span>`;
-  elements.submitBtnText.textContent = 'Add Expense';
+  elements.formSectionTitle.textContent = 'Quick Log Expense';
+  elements.formSectionSubtitle.innerHTML = `Log for <span id="form-month-hint" class="font-bold">${elements.currentMonthLabel.textContent}</span> • Press <kbd class="kbd-hint">Enter ↵</kbd> to save instantly`;
+  elements.submitBtnText.textContent = 'Log Expense';
   elements.cancelEditBtn.classList.add('hidden');
 
   hideFormError();
 }
 
-// Add or Update Expense Handler (Uses same on-screen form)
-function handleAddOrUpdateExpense(e) {
-  e.preventDefault();
+// Add or Update Expense Handler (Uses same on-screen form, ZERO page reloads)
+function handleAddOrUpdateExpense() {
   hideFormError();
 
   const editingId = elements.editingExpenseId.value;
   const title = elements.expenseTitleInput.value.trim();
   const amount = parseFloat(elements.expenseAmountInput.value);
   const category = elements.expenseCategoryInput.value;
-  const date = elements.expenseDateInput.value;
-  const paymentMethod = elements.expensePaymentInput.value;
+  const dayVal = elements.expenseDayInput.value;
+  const date = getConstructedDate(dayVal);
 
   if (!title) {
-    showFormError('Please enter a description for the expense.');
+    showFormError('Please enter what you bought (description).');
     elements.expenseTitleInput.focus();
     return;
   }
@@ -657,12 +677,6 @@ function handleAddOrUpdateExpense(e) {
   if (isNaN(amount) || amount <= 0) {
     showFormError('Please enter a valid positive dollar amount.');
     elements.expenseAmountInput.focus();
-    return;
-  }
-
-  if (!date) {
-    showFormError('Please select a valid date.');
-    elements.expenseDateInput.focus();
     return;
   }
 
@@ -675,8 +689,7 @@ function handleAddOrUpdateExpense(e) {
         title,
         amount,
         category,
-        date,
-        paymentMethod
+        date
       };
       saveExpenses();
       cancelEditExpense();
@@ -691,20 +704,23 @@ function handleAddOrUpdateExpense(e) {
       amount,
       category,
       date,
-      paymentMethod,
+      paymentMethod: 'Credit Card',
       notes: ''
     };
 
     state.expenses.unshift(newExpense);
     saveExpenses();
 
-    // Reset inputs
+    // Reset inputs for next fast entry
     elements.expenseTitleInput.value = '';
     elements.expenseAmountInput.value = '';
     hideFormError();
 
     renderDashboard();
-    showToast(`Added: ${title} (${formatCurrency(amount)})`);
+    showToast(`Logged: ${title} (${formatCurrency(amount)})`);
+
+    // Keep focus on title for rapid-fire logging
+    elements.expenseTitleInput.focus();
   }
 }
 
@@ -716,7 +732,6 @@ function deleteExpense(id) {
   state.expenses = state.expenses.filter(e => e.id !== id);
   saveExpenses();
 
-  // If was editing this expense, reset edit mode
   if (elements.editingExpenseId.value === id) {
     cancelEditExpense();
   }
@@ -731,7 +746,7 @@ function changeMonth(delta) {
   if (elements.editingExpenseId.value) {
     cancelEditExpense();
   }
-  setDefaultFormDate();
+  setDefaultDay();
   renderDashboard();
 }
 
@@ -740,20 +755,24 @@ function jumpToCurrentMonth() {
   if (elements.editingExpenseId.value) {
     cancelEditExpense();
   }
-  setDefaultFormDate();
+  setDefaultDay();
   renderDashboard();
 }
 
-// Set default form date matching active view month
-function setDefaultFormDate() {
+// Set default day number matching active view month
+function setDefaultDay() {
   const now = new Date();
   const year = state.currentDate.getFullYear();
   const month = state.currentDate.getMonth();
 
   if (now.getFullYear() === year && now.getMonth() === month) {
-    elements.expenseDateInput.value = now.toISOString().split('T')[0];
+    elements.expenseDayInput.value = now.getDate();
+    elements.dayPillToday.classList.add('active');
+    elements.dayPillYesterday.classList.remove('active');
   } else {
-    elements.expenseDateInput.value = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    elements.expenseDayInput.value = '1';
+    elements.dayPillToday.classList.remove('active');
+    elements.dayPillYesterday.classList.remove('active');
   }
 }
 
@@ -805,11 +824,43 @@ function initEventListeners() {
     }
   });
 
-  // Add / Edit Form
-  elements.addExpenseForm.addEventListener('submit', handleAddOrUpdateExpense);
+  // Fast Day Pills (Today / Yesterday)
+  elements.dayPillToday.addEventListener('click', () => {
+    const today = new Date();
+    elements.expenseDayInput.value = today.getDate();
+    elements.dayPillToday.classList.add('active');
+    elements.dayPillYesterday.classList.remove('active');
+  });
+
+  elements.dayPillYesterday.addEventListener('click', () => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    elements.expenseDayInput.value = yesterday.getDate();
+    elements.dayPillYesterday.classList.add('active');
+    elements.dayPillToday.classList.remove('active');
+  });
+
+  elements.expenseDayInput.addEventListener('input', () => {
+    elements.dayPillToday.classList.remove('active');
+    elements.dayPillYesterday.classList.remove('active');
+  });
+
+  // Fast Add / Edit Actions
+  elements.addExpenseSubmitBtn.addEventListener('click', handleAddOrUpdateExpense);
   elements.cancelEditBtn.addEventListener('click', cancelEditExpense);
-  elements.expenseTitleInput.addEventListener('input', hideFormError);
-  elements.expenseAmountInput.addEventListener('input', hideFormError);
+
+  // Fast Enter key to save across all input fields!
+  const inputs = [elements.expenseTitleInput, elements.expenseAmountInput, elements.expenseDayInput];
+  inputs.forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAddOrUpdateExpense();
+      }
+    });
+    input.addEventListener('input', hideFormError);
+  });
 
   // Search & Filter
   elements.expenseSearchInput.addEventListener('input', e => {
@@ -837,7 +888,7 @@ function initEventListeners() {
 document.addEventListener('DOMContentLoaded', () => {
   loadState();
   populateCategoryFilterDropdown();
-  setDefaultFormDate();
+  setDefaultDay();
   initEventListeners();
   renderDashboard();
 });

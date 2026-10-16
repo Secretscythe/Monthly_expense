@@ -389,17 +389,19 @@ body {
   margin-bottom: 1.5rem;
 }
 
-/* Add / Edit Expense Form */
-.add-expense-section {
-  background: linear-gradient(135deg, rgba(26, 32, 53, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%);
-  border: 1px solid rgba(99, 102, 241, 0.25);
-  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(99, 102, 241, 0.08);
+/* ========================================================
+   QUICK LOG ENTRY SECTION (Super Fast, Zero Flashing)
+   ======================================================== */
+.quick-log-card {
+  background: linear-gradient(135deg, rgba(26, 32, 53, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(99, 102, 241, 0.1);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.add-expense-section.edit-mode {
+.quick-log-card.edit-mode {
   border-color: #f59e0b;
-  box-shadow: 0 0 25px rgba(245, 158, 11, 0.2);
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.25);
 }
 
 .section-header {
@@ -436,33 +438,42 @@ body {
   color: #fff;
 }
 
-.add-expense-form {
+.kbd-hint {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.7rem;
+  font-family: inherit;
+  color: #cbd5e1;
+}
+
+/* Quick Log Row Layout */
+.quick-log-row {
   display: flex;
   gap: 0.85rem;
   align-items: flex-end;
   flex-wrap: wrap;
 }
 
-.form-group {
+.input-block {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
 }
 
-.flex-1 { flex: 1; min-width: 140px; }
+.flex-1 { flex: 1; min-width: 130px; }
 .flex-2 { flex: 2; min-width: 200px; }
+.flex-auto { flex: 0 0 auto; }
 
-.form-label {
+.quick-label {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
 
-.req { color: var(--accent-danger); }
-
-.form-input {
+.quick-input {
   width: 100%;
   background: var(--bg-input);
   border: 1px solid var(--border-subtle);
@@ -473,9 +484,10 @@ body {
   font-family: inherit;
   outline: none;
   transition: var(--transition-fast);
+  height: 40px;
 }
 
-.form-input:focus {
+.quick-input:focus {
   border-color: var(--border-focus);
   box-shadow: 0 0 0 2px var(--accent-primary-glow);
 }
@@ -504,14 +516,56 @@ body {
   pointer-events: none;
 }
 
-.form-input.with-prefix {
+.quick-input.with-prefix {
   padding-left: 1.65rem;
 }
 
-.form-submit-wrap {
-  align-self: flex-end;
+/* Day of Month Input Group with Quick Today/Yesterday Pills */
+.day-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
+.day-number-input {
+  width: 60px !important;
+  text-align: center;
+  font-weight: 700;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  padding: 0.4rem !important;
+}
+
+.day-quick-pills {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.day-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  height: 40px;
+  transition: var(--transition-fast);
+}
+
+.day-pill:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.day-pill.active {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--accent-primary);
+  color: #a5b4fc;
+}
+
+/* Form Buttons */
 .form-btn-group {
   display: flex;
   align-items: center;
@@ -1018,12 +1072,9 @@ body {
   .main-dashboard-grid {
     grid-template-columns: 1fr;
   }
-  .add-expense-form {
+  .quick-log-row {
     flex-direction: column;
     align-items: stretch;
-  }
-  .form-submit-wrap {
-    align-self: stretch;
   }
   .form-btn-group {
     width: 100%;
