@@ -1,5 +1,7 @@
 /**
  * SpendFlow - Simple & Fast Monthly Expense Tracker
+ * Fully inline on-screen inputs (No popups, No modals, No alerts/confirms)
+ * 100% compatible with GitHub Pages and Streamlit sandboxed iframes
  */
 
 // Category Palette with thematic icons and colors
@@ -111,7 +113,6 @@ function loadState() {
       state.expenses = [];
     }
   } else {
-    // Populate realistic initial data
     state.expenses = getSampleExpenses(year, month);
     saveExpenses();
   }
@@ -124,7 +125,6 @@ function loadState() {
     }
   }
 
-  // Ensure current month has a default target budget if not set
   if (!state.budgets[currentKey]) {
     state.budgets[currentKey] = 2500;
     saveBudgets();
@@ -181,28 +181,36 @@ const elements = {
   nextMonthBtn: document.getElementById('next-month-btn'),
   todayBtn: document.getElementById('today-btn'),
   exportCsvBtn: document.getElementById('export-csv-btn'),
-  openBudgetModalBtn: document.getElementById('open-budget-modal-btn'),
-  quickEditBudgetBtn: document.getElementById('quick-edit-budget-btn'),
 
   // KPIs
   kpiTotalSpent: document.getElementById('kpi-total-spent'),
   spentCountBadge: document.getElementById('spent-count-badge'),
   kpiDailyAverage: document.getElementById('kpi-daily-average'),
-  kpiMonthlyBudget: document.getElementById('kpi-monthly-budget'),
+  budgetSavedTag: document.getElementById('budget-saved-tag'),
+  inlineBudgetInput: document.getElementById('inline-budget-input'),
+  saveInlineBudgetBtn: document.getElementById('save-inline-budget-btn'),
   budgetProgressFill: document.getElementById('budget-progress-fill'),
   kpiBudgetPercent: document.getElementById('kpi-budget-percent'),
   kpiRemainingBalance: document.getElementById('kpi-remaining-balance'),
   balanceStatusBadge: document.getElementById('balance-status-badge'),
   kpiSafeDailyAllowance: document.getElementById('kpi-safe-daily-allowance'),
 
-  // Add Form
+  // Add / Edit Form
+  addExpenseSection: document.getElementById('add-expense-section'),
+  formSectionIcon: document.getElementById('form-section-icon'),
+  formSectionTitle: document.getElementById('form-section-title'),
+  formSectionSubtitle: document.getElementById('form-section-subtitle'),
   formMonthHint: document.getElementById('form-month-hint'),
   addExpenseForm: document.getElementById('add-expense-form'),
+  editingExpenseId: document.getElementById('editing-expense-id'),
   expenseTitleInput: document.getElementById('expense-title-input'),
   expenseAmountInput: document.getElementById('expense-amount-input'),
   expenseCategoryInput: document.getElementById('expense-category-input'),
   expenseDateInput: document.getElementById('expense-date-input'),
   expensePaymentInput: document.getElementById('expense-payment-input'),
+  addExpenseSubmitBtn: document.getElementById('add-expense-submit-btn'),
+  submitBtnText: document.getElementById('submit-btn-text'),
+  cancelEditBtn: document.getElementById('cancel-edit-btn'),
   formErrorBanner: document.getElementById('form-error-banner'),
   formErrorText: document.getElementById('form-error-text'),
 
@@ -221,27 +229,6 @@ const elements = {
   categoryFilterSelect: document.getElementById('category-filter-select'),
   expensesContainer: document.getElementById('expenses-container'),
   emptyStateCard: document.getElementById('empty-state-card'),
-
-  // Edit Modal
-  editExpenseModal: document.getElementById('edit-expense-modal'),
-  closeEditModalBtn: document.getElementById('close-edit-modal-btn'),
-  cancelEditBtn: document.getElementById('cancel-edit-btn'),
-  editExpenseForm: document.getElementById('edit-expense-form'),
-  editExpenseId: document.getElementById('edit-expense-id'),
-  editTitleInput: document.getElementById('edit-title-input'),
-  editAmountInput: document.getElementById('edit-amount-input'),
-  editDateInput: document.getElementById('edit-date-input'),
-  editCategoryInput: document.getElementById('edit-category-input'),
-  editPaymentInput: document.getElementById('edit-payment-input'),
-  editNotesInput: document.getElementById('edit-notes-input'),
-
-  // Budget Modal
-  budgetModal: document.getElementById('budget-modal'),
-  closeBudgetModalBtn: document.getElementById('close-budget-modal-btn'),
-  cancelBudgetBtn: document.getElementById('cancel-budget-btn'),
-  setBudgetForm: document.getElementById('set-budget-form'),
-  budgetTargetMonthLabel: document.getElementById('budget-target-month-label'),
-  budgetTargetInput: document.getElementById('budget-target-input'),
 
   // Toast
   toast: document.getElementById('toast'),
@@ -280,13 +267,17 @@ function renderDashboard() {
   elements.currentMonthLabel.textContent = monthName;
   elements.recordsSubtitle.textContent = `Showing expenses for ${monthName}`;
   elements.formMonthHint.textContent = monthName;
-  elements.budgetTargetMonthLabel.textContent = monthName;
 
   // Calculate totals
   const totalSpent = activeExpenses.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
   const monthlyBudget = state.budgets[currentKey] || 2500;
   const remaining = monthlyBudget - totalSpent;
   const percentUsed = monthlyBudget > 0 ? (totalSpent / monthlyBudget) * 100 : 0;
+
+  // Update inline budget input value if not actively focused
+  if (document.activeElement !== elements.inlineBudgetInput) {
+    elements.inlineBudgetInput.value = monthlyBudget;
+  }
 
   // Calculate day-related metrics
   const year = state.currentDate.getFullYear();
@@ -305,8 +296,7 @@ function renderDashboard() {
   elements.spentCountBadge.textContent = `${activeExpenses.length} ${activeExpenses.length === 1 ? 'item' : 'items'}`;
   elements.kpiDailyAverage.textContent = `Daily pace: ${formatCurrency(dailyAvg)} / day`;
 
-  // 2. KPI: Monthly Budget
-  elements.kpiMonthlyBudget.textContent = formatCurrency(monthlyBudget);
+  // 2. KPI: Monthly Budget & Progress Bar
   elements.kpiBudgetPercent.textContent = `${Math.min(999, Math.round(percentUsed))}% used`;
 
   const fillWidth = Math.min(100, Math.max(0, percentUsed));
@@ -521,19 +511,43 @@ function renderExpensesList(activeExpenses) {
       <div class="expense-right">
         <span class="expense-amount">-${formatCurrency(item.amount)}</span>
         <div class="action-btns">
-          <button class="action-icon-btn edit-btn" title="Edit expense" data-id="${item.id}" aria-label="Edit">
+          <button class="action-icon-btn edit-btn" title="Edit on screen" data-id="${item.id}" aria-label="Edit">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+            <span>Edit</span>
           </button>
           <button class="action-icon-btn delete-btn" title="Delete expense" data-id="${item.id}" aria-label="Delete">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            <span class="delete-btn-text"></span>
           </button>
         </div>
       </div>
     `;
 
-    // Hook buttons
-    card.querySelector('.edit-btn').addEventListener('click', () => openEditModal(item.id));
-    card.querySelector('.delete-btn').addEventListener('click', () => deleteExpense(item.id));
+    // Hook Edit Button to populate on-screen form
+    card.querySelector('.edit-btn').addEventListener('click', () => startEditExpense(item.id));
+
+    // Hook Two-Step Delete Button (No window.confirm, 100% iframe safe)
+    const deleteBtn = card.querySelector('.delete-btn');
+    const deleteBtnText = card.querySelector('.delete-btn-text');
+    let deleteConfirmTimeout = null;
+
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (deleteBtn.classList.contains('confirm-delete')) {
+        // Second click: perform delete
+        clearTimeout(deleteConfirmTimeout);
+        deleteExpense(item.id);
+      } else {
+        // First click: prompt inline confirmation
+        deleteBtn.classList.add('confirm-delete');
+        deleteBtnText.textContent = 'Delete?';
+
+        deleteConfirmTimeout = setTimeout(() => {
+          deleteBtn.classList.remove('confirm-delete');
+          deleteBtnText.textContent = '';
+        }, 3500);
+      }
+    });
 
     elements.expensesContainer.appendChild(card);
   });
@@ -561,11 +575,73 @@ function hideFormError() {
   elements.formErrorBanner.classList.add('hidden');
 }
 
-// Add Expense Handler
-function handleAddExpense(e) {
+// Save Inline Budget directly on the screen
+function handleSaveInlineBudget() {
+  const newBudget = parseFloat(elements.inlineBudgetInput.value);
+
+  if (isNaN(newBudget) || newBudget <= 0) {
+    showToast('Please enter a valid positive target budget amount.');
+    elements.inlineBudgetInput.focus();
+    return;
+  }
+
+  const currentKey = getMonthKey(state.currentDate);
+  state.budgets[currentKey] = newBudget;
+  saveBudgets();
+  renderDashboard();
+  showToast(`Monthly budget set to ${formatCurrency(newBudget)}!`);
+}
+
+// Start Editing an Expense directly in the on-screen form
+function startEditExpense(id) {
+  const item = state.expenses.find(e => e.id === id);
+  if (!item) return;
+
+  elements.editingExpenseId.value = item.id;
+  elements.expenseTitleInput.value = item.title;
+  elements.expenseAmountInput.value = item.amount;
+  elements.expenseCategoryInput.value = item.category;
+  elements.expenseDateInput.value = item.date;
+  elements.expensePaymentInput.value = item.paymentMethod || 'Credit Card';
+
+  // Update form appearance for editing
+  elements.addExpenseSection.classList.add('edit-mode');
+  elements.formSectionIcon.textContent = '✏️';
+  elements.formSectionTitle.textContent = `Edit Expense: "${item.title}"`;
+  elements.formSectionSubtitle.textContent = 'Modify the fields below and click "Save Changes" to update.';
+  elements.submitBtnText.textContent = 'Save Changes';
+  elements.cancelEditBtn.classList.remove('hidden');
+
+  hideFormError();
+
+  // Smoothly bring the on-screen form into view
+  elements.addExpenseSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  elements.expenseTitleInput.focus();
+}
+
+// Cancel Editing and reset form back to normal "Log New Expense"
+function cancelEditExpense() {
+  elements.editingExpenseId.value = '';
+  elements.expenseTitleInput.value = '';
+  elements.expenseAmountInput.value = '';
+  setDefaultFormDate();
+
+  elements.addExpenseSection.classList.remove('edit-mode');
+  elements.formSectionIcon.textContent = '⚡';
+  elements.formSectionTitle.textContent = 'Log New Expense';
+  elements.formSectionSubtitle.innerHTML = `Record an expense for <span id="form-month-hint" class="font-bold">${elements.currentMonthLabel.textContent}</span>`;
+  elements.submitBtnText.textContent = 'Add Expense';
+  elements.cancelEditBtn.classList.add('hidden');
+
+  hideFormError();
+}
+
+// Add or Update Expense Handler (Uses same on-screen form)
+function handleAddOrUpdateExpense(e) {
   e.preventDefault();
   hideFormError();
 
+  const editingId = elements.editingExpenseId.value;
   const title = elements.expenseTitleInput.value.trim();
   const amount = parseFloat(elements.expenseAmountInput.value);
   const category = elements.expenseCategoryInput.value;
@@ -590,135 +666,80 @@ function handleAddExpense(e) {
     return;
   }
 
-  const newExpense = {
-    id: 'exp-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-    title,
-    amount,
-    category,
-    date,
-    paymentMethod,
-    notes: ''
-  };
-
-  state.expenses.unshift(newExpense);
-  saveExpenses();
-
-  // Reset inputs
-  elements.expenseTitleInput.value = '';
-  elements.expenseAmountInput.value = '';
-  hideFormError();
-
-  renderDashboard();
-  showToast(`Added: ${title} (${formatCurrency(amount)})`);
-}
-
-// Edit Modal Handling
-function openEditModal(id) {
-  const item = state.expenses.find(e => e.id === id);
-  if (!item) return;
-
-  elements.editExpenseId.value = item.id;
-  elements.editTitleInput.value = item.title;
-  elements.editAmountInput.value = item.amount;
-  elements.editDateInput.value = item.date;
-  elements.editCategoryInput.value = item.category;
-  elements.editPaymentInput.value = item.paymentMethod || 'Credit Card';
-  elements.editNotesInput.value = item.notes || '';
-
-  elements.editExpenseModal.classList.remove('hidden');
-  elements.editTitleInput.focus();
-}
-
-function closeEditModal() {
-  elements.editExpenseModal.classList.add('hidden');
-}
-
-function handleSaveEdit(e) {
-  e.preventDefault();
-
-  const id = elements.editExpenseId.value;
-  const title = elements.editTitleInput.value.trim();
-  const amount = parseFloat(elements.editAmountInput.value);
-  const date = elements.editDateInput.value;
-  const category = elements.editCategoryInput.value;
-  const paymentMethod = elements.editPaymentInput.value;
-  const notes = elements.editNotesInput.value.trim();
-
-  if (!title || isNaN(amount) || amount <= 0 || !date) {
-    alert('Please fill out all required fields with valid values.');
-    return;
-  }
-
-  const idx = state.expenses.findIndex(e => e.id === id);
-  if (idx !== -1) {
-    state.expenses[idx] = {
-      ...state.expenses[idx],
+  if (editingId) {
+    // Update existing
+    const idx = state.expenses.findIndex(e => e.id === editingId);
+    if (idx !== -1) {
+      state.expenses[idx] = {
+        ...state.expenses[idx],
+        title,
+        amount,
+        category,
+        date,
+        paymentMethod
+      };
+      saveExpenses();
+      cancelEditExpense();
+      renderDashboard();
+      showToast(`Updated: ${title} (${formatCurrency(amount)})`);
+    }
+  } else {
+    // Add new
+    const newExpense = {
+      id: 'exp-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       title,
       amount,
-      date,
       category,
+      date,
       paymentMethod,
-      notes
+      notes: ''
     };
+
+    state.expenses.unshift(newExpense);
     saveExpenses();
-    closeEditModal();
+
+    // Reset inputs
+    elements.expenseTitleInput.value = '';
+    elements.expenseAmountInput.value = '';
+    hideFormError();
+
     renderDashboard();
-    showToast('Expense updated successfully!');
+    showToast(`Added: ${title} (${formatCurrency(amount)})`);
   }
 }
 
-// Delete Expense Handler
+// Delete Expense Handler (Invoked after inline confirmation)
 function deleteExpense(id) {
   const item = state.expenses.find(e => e.id === id);
   if (!item) return;
 
-  if (confirm(`Are you sure you want to delete "${item.title}"?`)) {
-    state.expenses = state.expenses.filter(e => e.id !== id);
-    saveExpenses();
-    renderDashboard();
-    showToast('Expense deleted.');
-  }
-}
+  state.expenses = state.expenses.filter(e => e.id !== id);
+  saveExpenses();
 
-// Budget Modal Handling
-function openBudgetModal() {
-  const currentKey = getMonthKey(state.currentDate);
-  const currentBudget = state.budgets[currentKey] || 2500;
-  elements.budgetTargetInput.value = currentBudget;
-  elements.budgetModal.classList.remove('hidden');
-  elements.budgetTargetInput.focus();
-}
-
-function closeBudgetModal() {
-  elements.budgetModal.classList.add('hidden');
-}
-
-function handleSaveBudget(e) {
-  e.preventDefault();
-  const newBudget = parseFloat(elements.budgetTargetInput.value);
-
-  if (isNaN(newBudget) || newBudget <= 0) {
-    alert('Please enter a valid positive target budget.');
-    return;
+  // If was editing this expense, reset edit mode
+  if (elements.editingExpenseId.value === id) {
+    cancelEditExpense();
   }
 
-  const currentKey = getMonthKey(state.currentDate);
-  state.budgets[currentKey] = newBudget;
-  saveBudgets();
-  closeBudgetModal();
   renderDashboard();
-  showToast('Monthly target budget saved!');
+  showToast(`Deleted "${item.title}"`);
 }
 
 // Month Navigation Handlers
 function changeMonth(delta) {
   state.currentDate.setMonth(state.currentDate.getMonth() + delta);
+  if (elements.editingExpenseId.value) {
+    cancelEditExpense();
+  }
   setDefaultFormDate();
   renderDashboard();
 }
 
 function jumpToCurrentMonth() {
   state.currentDate = new Date();
+  if (elements.editingExpenseId.value) {
+    cancelEditExpense();
+  }
   setDefaultFormDate();
   renderDashboard();
 }
@@ -775,8 +796,18 @@ function initEventListeners() {
   elements.nextMonthBtn.addEventListener('click', () => changeMonth(1));
   elements.todayBtn.addEventListener('click', jumpToCurrentMonth);
 
-  // Forms
-  elements.addExpenseForm.addEventListener('submit', handleAddExpense);
+  // Inline Budget Saving (Click button or Press Enter in budget input)
+  elements.saveInlineBudgetBtn.addEventListener('click', handleSaveInlineBudget);
+  elements.inlineBudgetInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveInlineBudget();
+    }
+  });
+
+  // Add / Edit Form
+  elements.addExpenseForm.addEventListener('submit', handleAddOrUpdateExpense);
+  elements.cancelEditBtn.addEventListener('click', cancelEditExpense);
   elements.expenseTitleInput.addEventListener('input', hideFormError);
   elements.expenseAmountInput.addEventListener('input', hideFormError);
 
@@ -791,34 +822,13 @@ function initEventListeners() {
     renderExpensesList(getActiveMonthExpenses());
   });
 
-  // Budget Modal
-  elements.openBudgetModalBtn.addEventListener('click', openBudgetModal);
-  elements.quickEditBudgetBtn.addEventListener('click', openBudgetModal);
-  elements.closeBudgetModalBtn.addEventListener('click', closeBudgetModal);
-  elements.cancelBudgetBtn.addEventListener('click', closeBudgetModal);
-  elements.setBudgetForm.addEventListener('submit', handleSaveBudget);
-
-  // Edit Modal
-  elements.closeEditModalBtn.addEventListener('click', closeEditModal);
-  elements.cancelEditBtn.addEventListener('click', closeEditModal);
-  elements.editExpenseForm.addEventListener('submit', handleSaveEdit);
-
   // CSV Export
   elements.exportCsvBtn.addEventListener('click', exportMonthlyCSV);
 
-  // Backdrop clicks
-  elements.editExpenseModal.addEventListener('click', e => {
-    if (e.target === elements.editExpenseModal) closeEditModal();
-  });
-  elements.budgetModal.addEventListener('click', e => {
-    if (e.target === elements.budgetModal) closeBudgetModal();
-  });
-
-  // Escape key to close modals
+  // Escape key cancels edit mode if active
   window.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      closeEditModal();
-      closeBudgetModal();
+    if (e.key === 'Escape' && elements.editingExpenseId.value) {
+      cancelEditExpense();
     }
   });
 }
