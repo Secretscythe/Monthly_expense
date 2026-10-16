@@ -71,20 +71,32 @@
         <div id="kpi-daily-average" class="kpi-subtext">Daily pace: $0.00 / day</div>
       </div>
 
-      <!-- Monthly Budget Card with INLINE ON-SCREEN EDITING -->
+      <!-- BALANCE CARD WITH TWO-STEP VERIFICATION EDITING -->
       <div class="kpi-card card-budget">
         <div class="kpi-header">
-          <span class="kpi-label">Monthly Target Budget</span>
+          <span class="kpi-label">Balance</span>
           <span id="budget-saved-tag" class="kpi-badge badge-neutral">Target</span>
         </div>
-        
-        <!-- On-screen direct typing for budget -->
-        <div class="budget-inline-wrap">
+
+        <!-- Mode A: Normal View (Displays Balance and Step 1 "Edit Balance" button) -->
+        <div id="balance-view-mode" class="balance-display-row">
+          <div id="kpi-monthly-budget" class="kpi-value">$2,500.00</div>
+          <button type="button" id="start-edit-balance-btn" class="pill-btn secondary-pill btn-sm" title="Step 1: Click to unlock balance editing">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            <span>Edit Balance</span>
+          </button>
+        </div>
+
+        <!-- Mode B: 2-Step Edit Verification View (Input + Step 2 "Confirm & Save") -->
+        <div id="balance-edit-mode" class="balance-edit-row hidden">
           <div class="input-with-prefix inline-budget-input-wrap">
             <span class="input-prefix">$</span>
-            <input type="number" id="inline-budget-input" class="form-input with-prefix inline-budget-input" placeholder="2500" step="50" min="1" aria-label="Target Budget Amount" />
+            <input type="number" id="inline-budget-input" class="quick-input with-prefix inline-budget-input" placeholder="2500" step="50" min="1" aria-label="New Balance" />
           </div>
-          <button type="button" id="save-inline-budget-btn" class="pill-btn primary-pill btn-sm" title="Save new target budget">Set Target</button>
+          <div class="balance-edit-btns">
+            <button type="button" id="confirm-save-balance-btn" class="pill-btn primary-pill btn-sm" title="Step 2: Confirm and save new balance">Confirm</button>
+            <button type="button" id="cancel-edit-balance-btn" class="pill-btn secondary-pill btn-sm" title="Cancel without saving">Cancel</button>
+          </div>
         </div>
 
         <div class="budget-progress-wrap">
@@ -106,7 +118,7 @@
       </div>
     </section>
 
-    <!-- Super-Fast On-Screen Quick Log Entry (No Form Tag, No Flash, Fast Day Select) -->
+    <!-- ULTRA-FAST QUICK EXPENSE LOG: JUST AMOUNT SPENT & CATEGORY -->
     <section id="add-expense-section" class="glass-card quick-log-card">
       <div class="section-header">
         <div class="section-title-wrap">
@@ -114,34 +126,28 @@
           <div>
             <h2 id="form-section-title" class="section-title">Quick Log Expense</h2>
             <p id="form-section-subtitle" class="section-subtitle">
-              Log for <span id="form-month-hint" class="font-bold">October 2026</span> • Press <kbd class="kbd-hint">Enter ↵</kbd> to save instantly
+              Enter amount and category • Press <kbd class="kbd-hint">Enter ↵</kbd> to save immediately
             </p>
           </div>
         </div>
       </div>
 
-      <!-- Pure div row with ZERO form submit action to prevent any iframe white flashing -->
-      <div class="quick-log-row">
+      <!-- Just 2 clean inputs: Amount & Category! -->
+      <div class="quick-log-row streamlined">
         <input type="hidden" id="editing-expense-id" value="" />
 
-        <!-- 1. Description -->
-        <div class="input-block flex-2">
-          <label for="expense-title-input" class="quick-label">1. What did you buy?</label>
-          <input type="text" id="expense-title-input" class="quick-input" placeholder="e.g. Lunch, Groceries, Gas, Coffee" />
-        </div>
-
-        <!-- 2. Amount -->
-        <div class="input-block flex-1">
-          <label for="expense-amount-input" class="quick-label">2. Amount ($)</label>
+        <!-- 1. Amount Spent -->
+        <div class="input-block flex-amount">
+          <label for="expense-amount-input" class="quick-label">Amount Spent ($)</label>
           <div class="input-with-prefix">
             <span class="input-prefix">$</span>
-            <input type="number" id="expense-amount-input" class="quick-input with-prefix" placeholder="0.00" step="0.01" min="0.01" />
+            <input type="number" id="expense-amount-input" class="quick-input with-prefix amount-highlight-input" placeholder="0.00" step="0.01" min="0.01" autofocus />
           </div>
         </div>
 
-        <!-- 3. Category -->
-        <div class="input-block flex-1">
-          <label for="expense-category-input" class="quick-label">3. Category</label>
+        <!-- 2. Category -->
+        <div class="input-block flex-category">
+          <label for="expense-category-input" class="quick-label">Category</label>
           <select id="expense-category-input" class="quick-input custom-select">
             <option value="Food & Dining">🍔 Food & Dining</option>
             <option value="Housing & Rent">🏠 Housing & Rent</option>
@@ -156,19 +162,7 @@
           </select>
         </div>
 
-        <!-- 4. Quick Day of Month (Fast, No clunky calendar popup!) -->
-        <div class="input-block flex-1">
-          <label for="expense-day-input" class="quick-label">4. Day of Month</label>
-          <div class="day-input-group">
-            <input type="number" id="expense-day-input" class="quick-input day-number-input" min="1" max="31" placeholder="Day" title="Day of month (1-31)" />
-            <div class="day-quick-pills">
-              <button type="button" id="day-pill-today" class="day-pill active" title="Use Today">Today</button>
-              <button type="button" id="day-pill-yesterday" class="day-pill" title="Use Yesterday">Yest</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- 5. Submit / Save Button -->
+        <!-- 3. Log Button -->
         <div class="input-block flex-auto">
           <label class="quick-label">&nbsp;</label>
           <div class="form-btn-group">
@@ -186,7 +180,7 @@
       <!-- Instant Validation Error Message Banner -->
       <div id="form-error-banner" class="error-banner hidden" role="alert">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <span id="form-error-text">Please enter a description and amount.</span>
+        <span id="form-error-text">Please enter a valid amount spent.</span>
       </div>
     </section>
 
@@ -247,12 +241,6 @@
         </div>
 
         <div class="records-filters">
-          <!-- Live Search Input -->
-          <div class="search-input-wrap">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input type="text" id="expense-search-input" placeholder="Search by title, notes, or payment..." />
-          </div>
-
           <!-- Category Filter Select -->
           <select id="category-filter-select" class="form-input filter-select">
             <option value="ALL">All Categories</option>
@@ -267,15 +255,15 @@
       </div>
 
       <!-- Empty State Card -->
-      <div id="empty-state-card" class="empty-state hidden">
+      <div id="empty-state-card" class="empty-state">
         <div class="empty-state-icon">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <rect x="2" y="4" width="20" height="16" rx="2"></rect>
             <path d="M7 15h0M2 9.5h20"></path>
           </svg>
         </div>
-        <h4 class="empty-state-title">No expenses recorded</h4>
-        <p class="empty-state-desc">You haven't logged any expenses for this month yet. Use the quick entry box above to log your first item!</p>
+        <h4 class="empty-state-title">No expenses logged yet</h4>
+        <p class="empty-state-desc">Enter an amount and select a category above to record your first expense!</p>
       </div>
     </section>
 

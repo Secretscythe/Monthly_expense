@@ -1,6 +1,6 @@
 /**
  * SpendFlow - Simple & Fast Monthly Expense Tracker
- * Super-fast inline entry, zero page reloads, zero white flash
+ * Streamlined: Amount & Category only, 2-Step Balance verification, zero sample data
  * 100% compatible with GitHub Pages and Streamlit Cloud
  */
 
@@ -18,92 +18,22 @@ const CATEGORIES = {
   'Miscellaneous': { color: '#94a3b8', icon: '📦', bg: 'rgba(148, 163, 184, 0.15)' }
 };
 
-// Application State
+// Application State (ZERO extra expenses, completely clean slate)
 const state = {
   currentDate: new Date(),
   expenses: [],
   budgets: {},
-  searchQuery: '',
   filterCategory: 'ALL'
 };
 
-// Sample realistic expenses for initial run
-function getSampleExpenses(year, month) {
-  const m = String(month + 1).padStart(2, '0');
-  return [
-    {
-      id: 'demo-1',
-      title: 'Monthly Apartment Rent',
-      amount: 1450.00,
-      category: 'Housing & Rent',
-      date: `${year}-${m}-01`,
-      paymentMethod: 'Bank Transfer',
-      notes: 'Monthly fixed rent'
-    },
-    {
-      id: 'demo-2',
-      title: 'Trader Joe\'s Grocery Run',
-      amount: 135.40,
-      category: 'Food & Dining',
-      date: `${year}-${m}-03`,
-      paymentMethod: 'Credit Card',
-      notes: 'Fresh groceries & pantry'
-    },
-    {
-      id: 'demo-3',
-      title: 'High-Speed Fiber Internet',
-      amount: 75.00,
-      category: 'Utilities & Bills',
-      date: `${year}-${m}-05`,
-      paymentMethod: 'Debit Card',
-      notes: 'Home fiber optic wifi'
-    },
-    {
-      id: 'demo-4',
-      title: 'Metro Monthly Transit Card',
-      amount: 85.00,
-      category: 'Transportation',
-      date: `${year}-${m}-07`,
-      paymentMethod: 'Mobile / UPI',
-      notes: 'Subway & bus monthly pass'
-    },
-    {
-      id: 'demo-5',
-      title: 'Dinner with Colleagues',
-      amount: 68.50,
-      category: 'Food & Dining',
-      date: `${year}-${m}-10`,
-      paymentMethod: 'Credit Card',
-      notes: 'Downtown ramen house'
-    },
-    {
-      id: 'demo-6',
-      title: 'Gym & Fitness Membership',
-      amount: 55.00,
-      category: 'Healthcare',
-      date: `${year}-${m}-12`,
-      paymentMethod: 'Credit Card',
-      notes: 'Monthly fitness club'
-    },
-    {
-      id: 'demo-7',
-      title: 'Streaming & Music Subscriptions',
-      amount: 32.99,
-      category: 'Entertainment',
-      date: `${year}-${m}-14`,
-      paymentMethod: 'Credit Card',
-      notes: 'Netflix & Spotify'
-    }
-  ];
-}
-
 // Storage Helpers
 function loadState() {
-  const storedExpenses = localStorage.getItem('spendflow_v2_expenses');
-  const storedBudgets = localStorage.getItem('spendflow_v2_budgets');
+  // Purge any legacy sample/demo data to ensure a completely clean tracker
+  localStorage.removeItem('spendflow_expenses');
+  localStorage.removeItem('spendflow_v2_expenses');
 
-  const year = state.currentDate.getFullYear();
-  const month = state.currentDate.getMonth();
+  const storedExpenses = localStorage.getItem('spendflow_clean_expenses');
+  const storedBudgets = localStorage.getItem('spendflow_clean_budgets');
   const currentKey = getMonthKey(state.currentDate);
 
   if (storedExpenses) {
@@ -113,7 +43,8 @@ function loadState() {
       state.expenses = [];
     }
   } else {
-    state.expenses = getSampleExpenses(year, month);
+    // Start with completely empty expenses (No dummy/sample data!)
+    state.expenses = [];
     saveExpenses();
   }
 
@@ -125,6 +56,7 @@ function loadState() {
     }
   }
 
+  // Default initial Balance if not yet configured
   if (!state.budgets[currentKey]) {
     state.budgets[currentKey] = 2500;
     saveBudgets();
@@ -132,11 +64,11 @@ function loadState() {
 }
 
 function saveExpenses() {
-  localStorage.setItem('spendflow_v2_expenses', JSON.stringify(state.expenses));
+  localStorage.setItem('spendflow_clean_expenses', JSON.stringify(state.expenses));
 }
 
 function saveBudgets() {
-  localStorage.setItem('spendflow_v2_budgets', JSON.stringify(state.budgets));
+  localStorage.setItem('spendflow_clean_budgets', JSON.stringify(state.budgets));
 }
 
 function getMonthKey(date) {
@@ -186,28 +118,30 @@ const elements = {
   kpiTotalSpent: document.getElementById('kpi-total-spent'),
   spentCountBadge: document.getElementById('spent-count-badge'),
   kpiDailyAverage: document.getElementById('kpi-daily-average'),
-  budgetSavedTag: document.getElementById('budget-saved-tag'),
+
+  // Balance Card (2-step verification)
+  balanceViewMode: document.getElementById('balance-view-mode'),
+  balanceEditMode: document.getElementById('balance-edit-mode'),
+  kpiMonthlyBudget: document.getElementById('kpi-monthly-budget'),
+  startEditBalanceBtn: document.getElementById('start-edit-balance-btn'),
   inlineBudgetInput: document.getElementById('inline-budget-input'),
-  saveInlineBudgetBtn: document.getElementById('save-inline-budget-btn'),
+  confirmSaveBalanceBtn: document.getElementById('confirm-save-balance-btn'),
+  cancelEditBalanceBtn: document.getElementById('cancel-edit-balance-btn'),
+
   budgetProgressFill: document.getElementById('budget-progress-fill'),
   kpiBudgetPercent: document.getElementById('kpi-budget-percent'),
   kpiRemainingBalance: document.getElementById('kpi-remaining-balance'),
   balanceStatusBadge: document.getElementById('balance-status-badge'),
   kpiSafeDailyAllowance: document.getElementById('kpi-safe-daily-allowance'),
 
-  // Fast Quick Log Section
+  // Streamlined Quick Log Section (Only Amount & Category)
   addExpenseSection: document.getElementById('add-expense-section'),
   formSectionIcon: document.getElementById('form-section-icon'),
   formSectionTitle: document.getElementById('form-section-title'),
   formSectionSubtitle: document.getElementById('form-section-subtitle'),
-  formMonthHint: document.getElementById('form-month-hint'),
   editingExpenseId: document.getElementById('editing-expense-id'),
-  expenseTitleInput: document.getElementById('expense-title-input'),
   expenseAmountInput: document.getElementById('expense-amount-input'),
   expenseCategoryInput: document.getElementById('expense-category-input'),
-  expenseDayInput: document.getElementById('expense-day-input'),
-  dayPillToday: document.getElementById('day-pill-today'),
-  dayPillYesterday: document.getElementById('day-pill-yesterday'),
   addExpenseSubmitBtn: document.getElementById('add-expense-submit-btn'),
   submitBtnText: document.getElementById('submit-btn-text'),
   cancelEditBtn: document.getElementById('cancel-edit-btn'),
@@ -225,7 +159,6 @@ const elements = {
 
   // Records List
   recordsSubtitle: document.getElementById('records-subtitle'),
-  expenseSearchInput: document.getElementById('expense-search-input'),
   categoryFilterSelect: document.getElementById('category-filter-select'),
   expensesContainer: document.getElementById('expenses-container'),
   emptyStateCard: document.getElementById('empty-state-card'),
@@ -257,7 +190,7 @@ function populateCategoryFilterDropdown() {
   elements.categoryFilterSelect.value = currentVal || 'ALL';
 }
 
-// Render Dashboard & Recalculate everything
+// Render Dashboard & Recalculate metrics
 function renderDashboard() {
   const monthName = state.currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const currentKey = getMonthKey(state.currentDate);
@@ -266,18 +199,12 @@ function renderDashboard() {
   // Update Month Labels
   elements.currentMonthLabel.textContent = monthName;
   elements.recordsSubtitle.textContent = `Showing expenses for ${monthName}`;
-  elements.formMonthHint.textContent = monthName;
 
   // Calculate totals
   const totalSpent = activeExpenses.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
-  const monthlyBudget = state.budgets[currentKey] || 2500;
-  const remaining = monthlyBudget - totalSpent;
-  const percentUsed = monthlyBudget > 0 ? (totalSpent / monthlyBudget) * 100 : 0;
-
-  // Update inline budget input value if not actively focused
-  if (document.activeElement !== elements.inlineBudgetInput) {
-    elements.inlineBudgetInput.value = monthlyBudget;
-  }
+  const monthlyBalance = state.budgets[currentKey] || 2500;
+  const remaining = monthlyBalance - totalSpent;
+  const percentUsed = monthlyBalance > 0 ? (totalSpent / monthlyBalance) * 100 : 0;
 
   // Calculate day-related metrics
   const year = state.currentDate.getFullYear();
@@ -296,7 +223,8 @@ function renderDashboard() {
   elements.spentCountBadge.textContent = `${activeExpenses.length} ${activeExpenses.length === 1 ? 'item' : 'items'}`;
   elements.kpiDailyAverage.textContent = `Daily pace: ${formatCurrency(dailyAvg)} / day`;
 
-  // 2. KPI: Monthly Budget & Progress Bar
+  // 2. KPI: Balance Card Display
+  elements.kpiMonthlyBudget.textContent = formatCurrency(monthlyBalance);
   elements.kpiBudgetPercent.textContent = `${Math.min(999, Math.round(percentUsed))}% used`;
 
   const fillWidth = Math.min(100, Math.max(0, percentUsed));
@@ -315,7 +243,7 @@ function renderDashboard() {
   if (remaining < 0) {
     elements.kpiRemainingBalance.className = 'kpi-value text-danger';
     elements.balanceStatusBadge.className = 'kpi-badge badge-danger';
-    elements.balanceStatusBadge.textContent = 'Over Budget';
+    elements.balanceStatusBadge.textContent = 'Over Balance';
     elements.kpiSafeDailyAllowance.textContent = `Exceeded by ${formatCurrency(Math.abs(remaining))}`;
   } else if (percentUsed >= 85) {
     elements.kpiRemainingBalance.className = 'kpi-value text-warning';
@@ -386,7 +314,7 @@ function renderCategoryAnalytics(activeExpenses, totalSpent) {
   if (categories.length === 0) {
     elements.categoryProgressList.innerHTML = `
       <div style="text-align: center; color: var(--text-dim); padding: 1.5rem 0; font-size: 0.85rem;">
-        No category expenses logged for this month.
+        No category expenses logged for this month yet.
       </div>
     `;
   } else {
@@ -425,7 +353,7 @@ function renderTopExpenses(activeExpenses) {
   if (top5.length === 0) {
     elements.topExpensesList.innerHTML = `
       <div style="text-align: center; color: var(--text-dim); padding: 1.5rem 0; font-size: 0.85rem;">
-        No expenses to display.
+        No expenses recorded yet.
       </div>
     `;
     return;
@@ -442,8 +370,8 @@ function renderTopExpenses(activeExpenses) {
       <div class="top-item-left">
         <span class="top-rank-badge ${rankClass}">#${rank}</span>
         <div>
-          <div class="top-item-title">${escapeHTML(item.title)}</div>
-          <div class="top-item-meta">${config.icon} ${escapeHTML(item.category)} • ${formatDateDisplay(item.date)}</div>
+          <div class="top-item-title">${config.icon} ${escapeHTML(item.category)}</div>
+          <div class="top-item-meta">${formatDateDisplay(item.date)}</div>
         </div>
       </div>
       <div class="top-item-amount">-${formatCurrency(item.amount)}</div>
@@ -452,7 +380,7 @@ function renderTopExpenses(activeExpenses) {
   });
 }
 
-// Render Expenses List with Filters & Search
+// Render Expenses List with Category Filter
 function renderExpensesList(activeExpenses) {
   let filtered = [...activeExpenses];
 
@@ -461,19 +389,7 @@ function renderExpensesList(activeExpenses) {
     filtered = filtered.filter(item => item.category === state.filterCategory);
   }
 
-  // Search filter
-  if (state.searchQuery && state.searchQuery.trim() !== '') {
-    const q = state.searchQuery.toLowerCase().trim();
-    filtered = filtered.filter(item => {
-      const matchTitle = (item.title || '').toLowerCase().includes(q);
-      const matchNotes = (item.notes || '').toLowerCase().includes(q);
-      const matchMethod = (item.paymentMethod || '').toLowerCase().includes(q);
-      const matchCategory = (item.category || '').toLowerCase().includes(q);
-      return matchTitle || matchNotes || matchMethod || matchCategory;
-    });
-  }
-
-  // Sort descending by date
+  // Sort descending by date / newest first
   filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
 
   elements.expensesContainer.innerHTML = '';
@@ -499,19 +415,16 @@ function renderExpensesList(activeExpenses) {
           ${config.icon}
         </div>
         <div>
-          <div class="expense-title">${escapeHTML(item.title)}</div>
+          <div class="expense-title">${config.icon} ${escapeHTML(item.category)}</div>
           <div class="expense-meta">
             <span>${formatDateDisplay(item.date)}</span>
-            <span class="expense-cat-tag">${escapeHTML(item.category)}</span>
-            ${item.paymentMethod ? `<span>• ${escapeHTML(item.paymentMethod)}</span>` : ''}
-            ${item.notes ? `<span>• "${escapeHTML(item.notes)}"</span>` : ''}
           </div>
         </div>
       </div>
       <div class="expense-right">
         <span class="expense-amount">-${formatCurrency(item.amount)}</span>
         <div class="action-btns">
-          <button type="button" class="action-icon-btn edit-btn" title="Edit on screen" data-id="${item.id}" aria-label="Edit">
+          <button type="button" class="action-icon-btn edit-btn" title="Edit amount or category" data-id="${item.id}" aria-label="Edit">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
             <span>Edit</span>
           </button>
@@ -573,12 +486,27 @@ function hideFormError() {
   elements.formErrorBanner.classList.add('hidden');
 }
 
-// Save Inline Budget directly on the screen
-function handleSaveInlineBudget() {
+// ========================================================
+// 2-STEP BALANCE EDITING VERIFICATION
+// ========================================================
+
+// Step 1: User clicks "Edit Balance" -> reveals input & confirm button
+function enterBalanceEditMode() {
+  const currentKey = getMonthKey(state.currentDate);
+  const currentBudget = state.budgets[currentKey] || 2500;
+
+  elements.inlineBudgetInput.value = currentBudget;
+  elements.balanceViewMode.classList.add('hidden');
+  elements.balanceEditMode.classList.remove('hidden');
+  elements.inlineBudgetInput.focus();
+}
+
+// Step 2: User clicks "Confirm" -> saves balance
+function confirmSaveBalance() {
   const newBudget = parseFloat(elements.inlineBudgetInput.value);
 
   if (isNaN(newBudget) || newBudget <= 0) {
-    showToast('Please enter a valid positive target budget amount.');
+    showToast('Please enter a valid positive balance.');
     elements.inlineBudgetInput.focus();
     return;
   }
@@ -586,24 +514,21 @@ function handleSaveInlineBudget() {
   const currentKey = getMonthKey(state.currentDate);
   state.budgets[currentKey] = newBudget;
   saveBudgets();
+
+  exitBalanceEditMode();
   renderDashboard();
-  showToast(`Monthly budget set to ${formatCurrency(newBudget)}!`);
+  showToast(`Balance updated to ${formatCurrency(newBudget)}!`);
 }
 
-// Helper to get formatted date string for active month and selected day
-function getConstructedDate(dayNumber) {
-  const year = state.currentDate.getFullYear();
-  const month = state.currentDate.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  let validDay = parseInt(dayNumber, 10);
-  if (isNaN(validDay) || validDay < 1) validDay = 1;
-  if (validDay > daysInMonth) validDay = daysInMonth;
-
-  const mm = String(month + 1).padStart(2, '0');
-  const dd = String(validDay).padStart(2, '0');
-  return `${year}-${mm}-${dd}`;
+// Cancel editing balance -> restores view mode without saving
+function exitBalanceEditMode() {
+  elements.balanceEditMode.classList.add('hidden');
+  elements.balanceViewMode.classList.remove('hidden');
 }
+
+// ========================================================
+// STREAMLINED QUICK LOG (Amount & Category Only)
+// ========================================================
 
 // Start Editing an Expense directly in the on-screen form
 function startEditExpense(id) {
@@ -611,68 +536,45 @@ function startEditExpense(id) {
   if (!item) return;
 
   elements.editingExpenseId.value = item.id;
-  elements.expenseTitleInput.value = item.title;
   elements.expenseAmountInput.value = item.amount;
   elements.expenseCategoryInput.value = item.category;
-
-  // Extract day from date (YYYY-MM-DD)
-  if (item.date) {
-    const parts = item.date.split('-');
-    if (parts.length === 3) {
-      elements.expenseDayInput.value = parseInt(parts[2], 10);
-    }
-  }
-
-  elements.dayPillToday.classList.remove('active');
-  elements.dayPillYesterday.classList.remove('active');
 
   // Update appearance for editing
   elements.addExpenseSection.classList.add('edit-mode');
   elements.formSectionIcon.textContent = '✏️';
-  elements.formSectionTitle.textContent = `Edit Expense: "${item.title}"`;
-  elements.formSectionSubtitle.textContent = 'Change values below and press Enter or Save to update.';
+  elements.formSectionTitle.textContent = `Edit Expense (${formatCurrency(item.amount)})`;
+  elements.formSectionSubtitle.textContent = 'Update amount or category and press Enter or Save.';
   elements.submitBtnText.textContent = 'Save Changes';
   elements.cancelEditBtn.classList.remove('hidden');
 
   hideFormError();
 
   elements.addExpenseSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  elements.expenseTitleInput.focus();
+  elements.expenseAmountInput.focus();
 }
 
-// Cancel Editing and reset form back to normal "Log New Expense"
+// Cancel Editing and reset form back to normal
 function cancelEditExpense() {
   elements.editingExpenseId.value = '';
-  elements.expenseTitleInput.value = '';
   elements.expenseAmountInput.value = '';
-  setDefaultDay();
 
   elements.addExpenseSection.classList.remove('edit-mode');
   elements.formSectionIcon.textContent = '⚡';
   elements.formSectionTitle.textContent = 'Quick Log Expense';
-  elements.formSectionSubtitle.innerHTML = `Log for <span id="form-month-hint" class="font-bold">${elements.currentMonthLabel.textContent}</span> • Press <kbd class="kbd-hint">Enter ↵</kbd> to save instantly`;
+  elements.formSectionSubtitle.innerHTML = `Enter amount and category • Press <kbd class="kbd-hint">Enter ↵</kbd> to save immediately`;
   elements.submitBtnText.textContent = 'Log Expense';
   elements.cancelEditBtn.classList.add('hidden');
 
   hideFormError();
 }
 
-// Add or Update Expense Handler (Uses same on-screen form, ZERO page reloads)
+// Add or Update Expense Handler (Uses only Amount & Category)
 function handleAddOrUpdateExpense() {
   hideFormError();
 
   const editingId = elements.editingExpenseId.value;
-  const title = elements.expenseTitleInput.value.trim();
   const amount = parseFloat(elements.expenseAmountInput.value);
   const category = elements.expenseCategoryInput.value;
-  const dayVal = elements.expenseDayInput.value;
-  const date = getConstructedDate(dayVal);
-
-  if (!title) {
-    showFormError('Please enter what you bought (description).');
-    elements.expenseTitleInput.focus();
-    return;
-  }
 
   if (isNaN(amount) || amount <= 0) {
     showFormError('Please enter a valid positive dollar amount.');
@@ -680,47 +582,52 @@ function handleAddOrUpdateExpense() {
     return;
   }
 
+  // Current active date (today's date within active month)
+  const now = new Date();
+  const year = state.currentDate.getFullYear();
+  const month = state.currentDate.getMonth();
+  const isCurrentCalendarMonth = (now.getFullYear() === year && now.getMonth() === month);
+  const day = isCurrentCalendarMonth ? now.getDate() : 1;
+  const mm = String(month + 1).padStart(2, '0');
+  const dd = String(day).padStart(2, '0');
+  const autoDate = `${year}-${mm}-${dd}`;
+
   if (editingId) {
     // Update existing
     const idx = state.expenses.findIndex(e => e.id === editingId);
     if (idx !== -1) {
       state.expenses[idx] = {
         ...state.expenses[idx],
-        title,
         amount,
-        category,
-        date
+        category
       };
       saveExpenses();
       cancelEditExpense();
       renderDashboard();
-      showToast(`Updated: ${title} (${formatCurrency(amount)})`);
+      showToast(`Updated: ${category} (${formatCurrency(amount)})`);
     }
   } else {
     // Add new
     const newExpense = {
       id: 'exp-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-      title,
+      title: category,
       amount,
       category,
-      date,
-      paymentMethod: 'Credit Card',
-      notes: ''
+      date: autoDate
     };
 
     state.expenses.unshift(newExpense);
     saveExpenses();
 
-    // Reset inputs for next fast entry
-    elements.expenseTitleInput.value = '';
+    // Reset inputs for next entry
     elements.expenseAmountInput.value = '';
     hideFormError();
 
     renderDashboard();
-    showToast(`Logged: ${title} (${formatCurrency(amount)})`);
+    showToast(`Logged: ${category} (${formatCurrency(amount)})`);
 
-    // Keep focus on title for rapid-fire logging
-    elements.expenseTitleInput.focus();
+    // Keep focus on amount for continuous rapid logging
+    elements.expenseAmountInput.focus();
   }
 }
 
@@ -737,7 +644,7 @@ function deleteExpense(id) {
   }
 
   renderDashboard();
-  showToast(`Deleted "${item.title}"`);
+  showToast(`Deleted ${item.category} (${formatCurrency(item.amount)})`);
 }
 
 // Month Navigation Handlers
@@ -746,7 +653,7 @@ function changeMonth(delta) {
   if (elements.editingExpenseId.value) {
     cancelEditExpense();
   }
-  setDefaultDay();
+  exitBalanceEditMode();
   renderDashboard();
 }
 
@@ -755,25 +662,8 @@ function jumpToCurrentMonth() {
   if (elements.editingExpenseId.value) {
     cancelEditExpense();
   }
-  setDefaultDay();
+  exitBalanceEditMode();
   renderDashboard();
-}
-
-// Set default day number matching active view month
-function setDefaultDay() {
-  const now = new Date();
-  const year = state.currentDate.getFullYear();
-  const month = state.currentDate.getMonth();
-
-  if (now.getFullYear() === year && now.getMonth() === month) {
-    elements.expenseDayInput.value = now.getDate();
-    elements.dayPillToday.classList.add('active');
-    elements.dayPillYesterday.classList.remove('active');
-  } else {
-    elements.expenseDayInput.value = '1';
-    elements.dayPillToday.classList.remove('active');
-    elements.dayPillYesterday.classList.remove('active');
-  }
 }
 
 // Export Monthly Data to CSV
@@ -784,15 +674,12 @@ function exportMonthlyCSV() {
     return;
   }
 
-  const headers = ['ID', 'Description', 'Amount ($)', 'Category', 'Date', 'Payment Method', 'Notes'];
+  const headers = ['ID', 'Category', 'Amount ($)', 'Date'];
   const rows = activeExpenses.map(exp => [
     `"${exp.id}"`,
-    `"${(exp.title || '').replace(/"/g, '""')}"`,
-    exp.amount.toFixed(2),
     `"${exp.category}"`,
-    `"${exp.date}"`,
-    `"${exp.paymentMethod || ''}"`,
-    `"${(exp.notes || '').replace(/"/g, '""')}"`
+    exp.amount.toFixed(2),
+    `"${exp.date}"`
   ]);
 
   const csvString = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -815,59 +702,33 @@ function initEventListeners() {
   elements.nextMonthBtn.addEventListener('click', () => changeMonth(1));
   elements.todayBtn.addEventListener('click', jumpToCurrentMonth);
 
-  // Inline Budget Saving (Click button or Press Enter in budget input)
-  elements.saveInlineBudgetBtn.addEventListener('click', handleSaveInlineBudget);
+  // 2-Step Balance Editing
+  elements.startEditBalanceBtn.addEventListener('click', enterBalanceEditMode);
+  elements.confirmSaveBalanceBtn.addEventListener('click', confirmSaveBalance);
+  elements.cancelEditBalanceBtn.addEventListener('click', exitBalanceEditMode);
   elements.inlineBudgetInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleSaveInlineBudget();
+      confirmSaveBalance();
+    } else if (e.key === 'Escape') {
+      exitBalanceEditMode();
     }
-  });
-
-  // Fast Day Pills (Today / Yesterday)
-  elements.dayPillToday.addEventListener('click', () => {
-    const today = new Date();
-    elements.expenseDayInput.value = today.getDate();
-    elements.dayPillToday.classList.add('active');
-    elements.dayPillYesterday.classList.remove('active');
-  });
-
-  elements.dayPillYesterday.addEventListener('click', () => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    elements.expenseDayInput.value = yesterday.getDate();
-    elements.dayPillYesterday.classList.add('active');
-    elements.dayPillToday.classList.remove('active');
-  });
-
-  elements.expenseDayInput.addEventListener('input', () => {
-    elements.dayPillToday.classList.remove('active');
-    elements.dayPillYesterday.classList.remove('active');
   });
 
   // Fast Add / Edit Actions
   elements.addExpenseSubmitBtn.addEventListener('click', handleAddOrUpdateExpense);
   elements.cancelEditBtn.addEventListener('click', cancelEditExpense);
 
-  // Fast Enter key to save across all input fields!
-  const inputs = [elements.expenseTitleInput, elements.expenseAmountInput, elements.expenseDayInput];
-  inputs.forEach(input => {
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleAddOrUpdateExpense();
-      }
-    });
-    input.addEventListener('input', hideFormError);
+  // Fast Enter key on Amount to save immediately!
+  elements.expenseAmountInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddOrUpdateExpense();
+    }
   });
+  elements.expenseAmountInput.addEventListener('input', hideFormError);
 
-  // Search & Filter
-  elements.expenseSearchInput.addEventListener('input', e => {
-    state.searchQuery = e.target.value;
-    renderExpensesList(getActiveMonthExpenses());
-  });
-
+  // Filter
   elements.categoryFilterSelect.addEventListener('change', e => {
     state.filterCategory = e.target.value;
     renderExpensesList(getActiveMonthExpenses());
@@ -888,7 +749,6 @@ function initEventListeners() {
 function initApp() {
   loadState();
   populateCategoryFilterDropdown();
-  setDefaultDay();
   initEventListeners();
   renderDashboard();
 }
