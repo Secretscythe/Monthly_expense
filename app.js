@@ -885,10 +885,16 @@ function initEventListeners() {
 }
 
 // App Initialization
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
   loadState();
   populateCategoryFilterDropdown();
   setDefaultDay();
   initEventListeners();
   renderDashboard();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}

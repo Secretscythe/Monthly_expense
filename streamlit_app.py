@@ -42,9 +42,9 @@ with open(os.path.join(base_dir, "style.css"), "r", encoding="utf-8") as f:
 with open(os.path.join(base_dir, "app.js"), "r", encoding="utf-8") as f:
     js = f.read()
 
-# Inline CSS and JS for self-contained rendering
-html = re.sub(r'<link\s+rel="stylesheet"\s+href="style\.css"\s*/?>', f"<style>\n{css}\n</style>", html)
-html = re.sub(r'<script\s+src="app\.js"\s*></script>', f"<script>\n{js}\n</script>", html)
+# Inline CSS and JS safely using lambda to avoid escape corruption
+html = re.sub(r'<link\s+rel="stylesheet"\s+href="style\.css"\s*/?>', lambda _: f"<style>\n{css}\n</style>", html)
+html = re.sub(r'<script\s+src="app\.js"\s*></script>', lambda _: f"<script>\n{js}\n</script>", html)
 
 # Render HTML in Streamlit
 components.html(html, height=1150, scrolling=True)
