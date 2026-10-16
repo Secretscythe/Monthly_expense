@@ -1,8 +1,8 @@
 /**
- * SpendFlow - Smart Monthly Expense Tracker
+ * SpendFlow - Simple & Fast Monthly Expense Tracker
  */
 
-// Category Definitions with distinct themes and emojis
+// Category Palette with thematic icons and colors
 const CATEGORIES = {
   'Food & Dining': { color: '#f59e0b', icon: '🍔', bg: 'rgba(245, 158, 11, 0.15)' },
   'Housing & Rent': { color: '#8b5cf6', icon: '🏠', bg: 'rgba(139, 92, 246, 0.15)' },
@@ -21,12 +21,12 @@ const state = {
   currentDate: new Date(),
   expenses: [],
   budgets: {},
-  filterCategory: 'ALL',
-  searchQuery: ''
+  searchQuery: '',
+  filterCategory: 'ALL'
 };
 
-// Seed sample data for an engaging first-time experience
-function getInitialSampleData(year, month) {
+// Sample realistic expenses for initial run
+function getSampleExpenses(year, month) {
   const m = String(month + 1).padStart(2, '0');
   return [
     {
@@ -40,12 +40,12 @@ function getInitialSampleData(year, month) {
     },
     {
       id: 'demo-2',
-      title: 'Whole Foods Market',
-      amount: 142.60,
+      title: 'Trader Joe\'s Grocery Run',
+      amount: 135.40,
       category: 'Food & Dining',
-      date: `${year}-${m}-04`,
+      date: `${year}-${m}-03`,
       paymentMethod: 'Credit Card',
-      notes: 'Weekly groceries & produce'
+      notes: 'Fresh groceries & pantry'
     },
     {
       id: 'demo-3',
@@ -54,51 +54,51 @@ function getInitialSampleData(year, month) {
       category: 'Utilities & Bills',
       date: `${year}-${m}-05`,
       paymentMethod: 'Debit Card',
-      notes: 'Gigabit fiber connection'
+      notes: 'Home fiber optic wifi'
     },
     {
       id: 'demo-4',
-      title: 'Metro Transit Pass',
+      title: 'Metro Monthly Transit Card',
       amount: 85.00,
       category: 'Transportation',
       date: `${year}-${m}-07`,
-      paymentMethod: 'Apple / Google Pay',
-      notes: 'Monthly subway & bus pass'
+      paymentMethod: 'Mobile / UPI',
+      notes: 'Subway & bus monthly pass'
     },
     {
       id: 'demo-5',
       title: 'Dinner with Colleagues',
       amount: 68.50,
       category: 'Food & Dining',
-      date: `${year}-${m}-09`,
+      date: `${year}-${m}-10`,
       paymentMethod: 'Credit Card',
-      notes: 'Italian bistro downtown'
+      notes: 'Downtown ramen house'
     },
     {
       id: 'demo-6',
       title: 'Gym & Fitness Membership',
       amount: 55.00,
       category: 'Healthcare',
-      date: `${year}-${m}-11`,
+      date: `${year}-${m}-12`,
       paymentMethod: 'Credit Card',
-      notes: 'Monthly gym fee'
+      notes: 'Monthly fitness club'
     },
     {
       id: 'demo-7',
-      title: 'Streaming & Media Subscriptions',
+      title: 'Streaming & Music Subscriptions',
       amount: 32.99,
       category: 'Entertainment',
-      date: `${year}-${m}-12`,
+      date: `${year}-${m}-14`,
       paymentMethod: 'Credit Card',
-      notes: 'Netflix & Spotify family'
+      notes: 'Netflix & Spotify'
     }
   ];
 }
 
-// Storage helpers
+// Storage Helpers
 function loadState() {
-  const storedExpenses = localStorage.getItem('spendflow_expenses');
-  const storedBudgets = localStorage.getItem('spendflow_budgets');
+  const storedExpenses = localStorage.getItem('spendflow_v2_expenses');
+  const storedBudgets = localStorage.getItem('spendflow_v2_budgets');
 
   const year = state.currentDate.getFullYear();
   const month = state.currentDate.getMonth();
@@ -111,8 +111,8 @@ function loadState() {
       state.expenses = [];
     }
   } else {
-    // Populate realistic default data
-    state.expenses = getInitialSampleData(year, month);
+    // Populate realistic initial data
+    state.expenses = getSampleExpenses(year, month);
     saveExpenses();
   }
 
@@ -124,19 +124,19 @@ function loadState() {
     }
   }
 
-  // Ensure current month has a default budget if not set
+  // Ensure current month has a default target budget if not set
   if (!state.budgets[currentKey]) {
-    state.budgets[currentKey] = 2800;
+    state.budgets[currentKey] = 2500;
     saveBudgets();
   }
 }
 
 function saveExpenses() {
-  localStorage.setItem('spendflow_expenses', JSON.stringify(state.expenses));
+  localStorage.setItem('spendflow_v2_expenses', JSON.stringify(state.expenses));
 }
 
 function saveBudgets() {
-  localStorage.setItem('spendflow_budgets', JSON.stringify(state.budgets));
+  localStorage.setItem('spendflow_v2_budgets', JSON.stringify(state.budgets));
 }
 
 function getMonthKey(date) {
@@ -151,344 +151,15 @@ function formatCurrency(amount) {
     currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  }).format(amount);
+  }).format(amount || 0);
 }
 
-function formatDate(dateStr) {
+function formatDateDisplay(dateStr) {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
   if (parts.length !== 3) return dateStr;
-  const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-// Elements Cache
-const elements = {
-  activeMonthLabel: document.getElementById('active-month-label'),
-  prevMonthBtn: document.getElementById('prev-month-btn'),
-  nextMonthBtn: document.getElementById('next-month-btn'),
-  todayMonthBtn: document.getElementById('today-month-btn'),
-  exportBtn: document.getElementById('export-btn'),
-  openAddModalBtn: document.getElementById('open-add-modal-btn'),
-  emptyAddBtn: document.getElementById('empty-add-btn'),
-
-  // KPIs
-  kpiTotalSpent: document.getElementById('kpi-total-spent'),
-  kpiDailyAvg: document.getElementById('kpi-daily-avg'),
-  spentCountBadge: document.getElementById('spent-count-badge'),
-  kpiBudgetAmount: document.getElementById('kpi-budget-amount'),
-  budgetProgressBar: document.getElementById('budget-progress-bar'),
-  kpiBudgetPercent: document.getElementById('kpi-budget-percent'),
-  kpiBudgetCapLabel: document.getElementById('kpi-budget-cap-label'),
-  kpiRemainingAmount: document.getElementById('kpi-remaining-amount'),
-  budgetStatusPill: document.getElementById('budget-status-pill'),
-  kpiSafeDailySpend: document.getElementById('kpi-safe-daily-spend'),
-  editBudgetBtn: document.getElementById('edit-budget-btn'),
-
-  // Visuals & Breakdown
-  categoryCountLabel: document.getElementById('category-count-label'),
-  chartCenterAmount: document.getElementById('chart-center-amount'),
-  donutSegmentsGroup: document.getElementById('donut-segments'),
-  categoryBreakdownList: document.getElementById('category-breakdown-list'),
-  topCategoryName: document.getElementById('top-category-name'),
-  highestExpenseLabel: document.getElementById('highest-expense-label'),
-  totalTxnCount: document.getElementById('total-txn-count'),
-
-  // Transaction list & filters
-  transactionsContainer: document.getElementById('transactions-container'),
-  emptyState: document.getElementById('empty-state'),
-  expenseSearchInput: document.getElementById('expense-search-input'),
-  categoryFilterSelect: document.getElementById('category-filter-select'),
-  historySubtitle: document.getElementById('history-subtitle'),
-
-  // Expense Modal
-  expenseModal: document.getElementById('expense-modal'),
-  modalTitle: document.getElementById('modal-title'),
-  closeModalBtn: document.getElementById('close-modal-btn'),
-  cancelModalBtn: document.getElementById('cancel-modal-btn'),
-  expenseForm: document.getElementById('expense-form'),
-  editExpenseId: document.getElementById('edit-expense-id'),
-  formTitle: document.getElementById('form-title'),
-  formAmount: document.getElementById('form-amount'),
-  formDate: document.getElementById('form-date'),
-  formCategory: document.getElementById('form-category'),
-  formPayment: document.getElementById('form-payment'),
-  formNotes: document.getElementById('form-notes'),
-
-  // Budget Modal
-  budgetModal: document.getElementById('budget-modal'),
-  budgetTargetMonth: document.getElementById('budget-target-month'),
-  budgetInput: document.getElementById('budget-input'),
-  closeBudgetModalBtn: document.getElementById('close-budget-modal-btn'),
-  cancelBudgetModalBtn: document.getElementById('cancel-budget-modal-btn'),
-  budgetForm: document.getElementById('budget-form'),
-
-  // Toast
-  toast: document.getElementById('toast'),
-  toastMessage: document.getElementById('toast-message')
-};
-
-// Filter expenses for current active month
-function getActiveMonthExpenses() {
-  const currentKey = getMonthKey(state.currentDate);
-  return state.expenses.filter(item => {
-    return item.date && item.date.startsWith(currentKey);
-  });
-}
-
-// Render Header & Month info
-function renderHeader() {
-  const monthName = state.currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  elements.activeMonthLabel.textContent = monthName;
-  elements.historySubtitle.textContent = `Showing expenses for ${monthName}`;
-  elements.budgetTargetMonth.textContent = monthName;
-}
-
-// Recalculate KPIs and Render Dashboard
-function updateDashboard() {
-  renderHeader();
-  const currentKey = getMonthKey(state.currentDate);
-  const monthExpenses = getActiveMonthExpenses();
-
-  const totalSpent = monthExpenses.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
-  const currentBudget = state.budgets[currentKey] || 2500;
-  const remaining = currentBudget - totalSpent;
-  const percentUsed = currentBudget > 0 ? (totalSpent / currentBudget) * 100 : 0;
-
-  // Days calculations
-  const year = state.currentDate.getFullYear();
-  const month = state.currentDate.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const now = new Date();
-  const isCurrentCalendarMonth = (now.getFullYear() === year && now.getMonth() === month);
-  const activeDay = isCurrentCalendarMonth ? now.getDate() : daysInMonth;
-  const daysRemaining = Math.max(1, daysInMonth - activeDay);
-
-  const dailyAvg = activeDay > 0 ? totalSpent / activeDay : 0;
-  const safeDailySpend = remaining > 0 ? remaining / daysRemaining : 0;
-
-  // Update KPI 1: Spent
-  elements.kpiTotalSpent.textContent = formatCurrency(totalSpent);
-  elements.spentCountBadge.textContent = `${monthExpenses.length} ${monthExpenses.length === 1 ? 'item' : 'items'}`;
-  elements.kpiDailyAvg.textContent = `Daily avg: ${formatCurrency(dailyAvg)} / day`;
-
-  // Update KPI 2: Budget
-  elements.kpiBudgetAmount.textContent = formatCurrency(currentBudget);
-  elements.kpiBudgetPercent.textContent = `${Math.min(999, Math.round(percentUsed))}% used`;
-  elements.kpiBudgetCapLabel.textContent = `Target: ${formatCurrency(currentBudget)}`;
-
-  const fillWidth = Math.min(100, Math.max(0, percentUsed));
-  elements.budgetProgressBar.style.width = `${fillWidth}%`;
-  elements.budgetProgressBar.className = 'budget-progress-fill';
-  if (percentUsed >= 100) {
-    elements.budgetProgressBar.classList.add('status-exceeded');
-  } else if (percentUsed >= 85) {
-    elements.budgetProgressBar.classList.add('status-warning');
-  }
-
-  // Update KPI 3: Remaining
-  elements.kpiRemainingAmount.textContent = formatCurrency(remaining);
-  if (remaining < 0) {
-    elements.kpiRemainingAmount.style.color = 'var(--accent-danger)';
-    elements.budgetStatusPill.className = 'kpi-badge badge-danger';
-    elements.budgetStatusPill.innerHTML = `<span>Over Budget</span>`;
-    elements.kpiSafeDailySpend.textContent = `Exceeded by ${formatCurrency(Math.abs(remaining))}`;
-  } else if (percentUsed >= 85) {
-    elements.kpiRemainingAmount.style.color = 'var(--accent-warning)';
-    elements.budgetStatusPill.className = 'kpi-badge badge-warning';
-    elements.budgetStatusPill.innerHTML = `<span>Tight Pace</span>`;
-    elements.kpiSafeDailySpend.textContent = `Safe spend: ${formatCurrency(safeDailySpend)} / day`;
-  } else {
-    elements.kpiRemainingAmount.style.color = '#34d399';
-    elements.budgetStatusPill.className = 'kpi-badge badge-safe';
-    elements.budgetStatusPill.innerHTML = `<span>On Track</span>`;
-    elements.kpiSafeDailySpend.textContent = `Safe spend: ${formatCurrency(safeDailySpend)} / day`;
-  }
-
-  // Render Charts & Categories
-  renderVisualAnalytics(monthExpenses, totalSpent);
-
-  // Render Transaction List
-  renderTransactions(monthExpenses);
-}
-
-// Render Category Breakdown & SVG Donut Chart
-function renderVisualAnalytics(monthExpenses, totalSpent) {
-  // Aggregate by category
-  const categoryMap = {};
-  let highestExpense = null;
-
-  monthExpenses.forEach(exp => {
-    const cat = exp.category || 'Miscellaneous';
-    const amt = parseFloat(exp.amount) || 0;
-    categoryMap[cat] = (categoryMap[cat] || 0) + amt;
-
-    if (!highestExpense || amt > highestExpense.amount) {
-      highestExpense = exp;
-    }
-  });
-
-  const categories = Object.keys(categoryMap).map(cat => ({
-    name: cat,
-    amount: categoryMap[cat],
-    percent: totalSpent > 0 ? (categoryMap[cat] / totalSpent) * 100 : 0
-  })).sort((a, b) => b.amount - a.amount);
-
-  elements.categoryCountLabel.textContent = `${categories.length} ${categories.length === 1 ? 'category' : 'categories'}`;
-  elements.chartCenterAmount.textContent = formatCurrency(totalSpent);
-
-  // Quick stats
-  elements.totalTxnCount.textContent = monthExpenses.length;
-  elements.topCategoryName.textContent = categories.length > 0 ? categories[0].name : '—';
-  elements.highestExpenseLabel.textContent = highestExpense ? `${highestExpense.title} (${formatCurrency(highestExpense.amount)})` : '—';
-
-  // Render Category Bars
-  elements.categoryBreakdownList.innerHTML = '';
-  if (categories.length === 0) {
-    elements.categoryBreakdownList.innerHTML = `
-      <div style="text-align: center; color: var(--text-dim); padding: 20px 0; font-size: 0.85rem;">
-        No category data available
-      </div>
-    `;
-  } else {
-    categories.forEach(item => {
-      const config = CATEGORIES[item.name] || CATEGORIES['Miscellaneous'];
-      const row = document.createElement('div');
-      row.className = 'category-bar-item';
-      row.innerHTML = `
-        <div class="cat-bar-header">
-          <div class="cat-name-tag">
-            <span class="cat-dot" style="background-color: ${config.color};"></span>
-            <span>${config.icon} ${item.name}</span>
-          </div>
-          <div class="cat-amount-info">
-            <span class="cat-total-money">${formatCurrency(item.amount)}</span>
-            <span class="cat-percentage">${Math.round(item.percent)}%</span>
-          </div>
-        </div>
-        <div class="cat-progress-track">
-          <div class="cat-progress-fill" style="width: ${item.percent}%; background-color: ${config.color};"></div>
-        </div>
-      `;
-      elements.categoryBreakdownList.appendChild(row);
-    });
-  }
-
-  // Draw SVG Donut Chart
-  renderDonutChart(categories, totalSpent);
-}
-
-// Render dynamic SVG Donut Chart
-function renderDonutChart(categories, totalSpent) {
-  elements.donutSegmentsGroup.innerHTML = '';
-  if (totalSpent <= 0 || categories.length === 0) return;
-
-  const radius = 75;
-  const circumference = 2 * Math.PI * radius; // approx 471.24
-  let accumulatedOffset = 0;
-
-  categories.forEach(cat => {
-    const config = CATEGORIES[cat.name] || CATEGORIES['Miscellaneous'];
-    const segmentLength = (cat.percent / 100) * circumference;
-
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('class', 'donut-segment');
-    circle.setAttribute('cx', '100');
-    circle.setAttribute('cy', '100');
-    circle.setAttribute('r', radius.toString());
-    circle.setAttribute('stroke', config.color);
-    circle.setAttribute('stroke-dasharray', `${segmentLength} ${circumference}`);
-    circle.setAttribute('stroke-dashoffset', (-accumulatedOffset).toString());
-
-    // Title tooltip on hover
-    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-    title.textContent = `${cat.name}: ${formatCurrency(cat.amount)} (${Math.round(cat.percent)}%)`;
-    circle.appendChild(title);
-
-    elements.donutSegmentsGroup.appendChild(circle);
-    accumulatedOffset += segmentLength;
-  });
-}
-
-// Render Transactions List with search & category filters
-function renderTransactions(monthExpenses) {
-  elements.transactionsContainer.innerHTML = '';
-
-  let filtered = [...monthExpenses];
-
-  // Category filter
-  if (state.filterCategory !== 'ALL') {
-    filtered = filtered.filter(exp => exp.category === state.filterCategory);
-  }
-
-  // Search filter
-  if (state.searchQuery.trim() !== '') {
-    const q = state.searchQuery.toLowerCase().trim();
-    filtered = filtered.filter(exp => {
-      const matchTitle = (exp.title || '').toLowerCase().includes(q);
-      const matchNotes = (exp.notes || '').toLowerCase().includes(q);
-      const matchMethod = (exp.paymentMethod || '').toLowerCase().includes(q);
-      return matchTitle || matchNotes || matchMethod;
-    });
-  }
-
-  // Sort by date descending
-  filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-  if (filtered.length === 0) {
-    elements.emptyState.classList.remove('hidden');
-    elements.transactionsContainer.classList.add('hidden');
-    return;
-  }
-
-  elements.emptyState.classList.add('hidden');
-  elements.transactionsContainer.classList.remove('hidden');
-
-  filtered.forEach(exp => {
-    const catConfig = CATEGORIES[exp.category] || CATEGORIES['Miscellaneous'];
-    const card = document.createElement('div');
-    card.className = 'transaction-card';
-    card.dataset.id = exp.id;
-
-    card.innerHTML = `
-      <div class="txn-left">
-        <div class="txn-icon" style="background: ${catConfig.bg}; color: ${catConfig.color};">
-          ${catConfig.icon}
-        </div>
-        <div class="txn-details">
-          <div class="txn-title-row">
-            <span class="txn-title">${escapeHTML(exp.title)}</span>
-            <span class="txn-badge">${escapeHTML(exp.category)}</span>
-          </div>
-          <div class="txn-meta">
-            <span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="18" y2="10"></line></svg>
-              ${formatDate(exp.date)}
-            </span>
-            ${exp.paymentMethod ? `<span>• ${escapeHTML(exp.paymentMethod)}</span>` : ''}
-            ${exp.notes ? `<span class="txn-notes">• "${escapeHTML(exp.notes)}"</span>` : ''}
-          </div>
-        </div>
-      </div>
-      <div class="txn-right">
-        <span class="txn-amount">-${formatCurrency(exp.amount)}</span>
-        <div class="txn-actions">
-          <button class="txn-action-btn edit-btn" title="Edit expense" data-id="${exp.id}" aria-label="Edit">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-          </button>
-          <button class="txn-action-btn delete-btn" title="Delete expense" data-id="${exp.id}" aria-label="Delete">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-          </button>
-        </div>
-      </div>
-    `;
-
-    // Attach listeners
-    card.querySelector('.edit-btn').addEventListener('click', () => openEditExpenseModal(exp.id));
-    card.querySelector('.delete-btn').addEventListener('click', () => deleteExpense(exp.id));
-
-    elements.transactionsContainer.appendChild(card);
-  });
 }
 
 function escapeHTML(str) {
@@ -502,113 +173,486 @@ function escapeHTML(str) {
   }[tag] || tag));
 }
 
-// Show Toast feedback
-let toastTimeout;
-function showToast(message, isSuccess = true) {
-  clearTimeout(toastTimeout);
-  elements.toastMessage.textContent = message;
+// Elements Cache
+const elements = {
+  // Navigation
+  prevMonthBtn: document.getElementById('prev-month-btn'),
+  currentMonthLabel: document.getElementById('current-month-label'),
+  nextMonthBtn: document.getElementById('next-month-btn'),
+  todayBtn: document.getElementById('today-btn'),
+  exportCsvBtn: document.getElementById('export-csv-btn'),
+  openBudgetModalBtn: document.getElementById('open-budget-modal-btn'),
+  quickEditBudgetBtn: document.getElementById('quick-edit-budget-btn'),
+
+  // KPIs
+  kpiTotalSpent: document.getElementById('kpi-total-spent'),
+  spentCountBadge: document.getElementById('spent-count-badge'),
+  kpiDailyAverage: document.getElementById('kpi-daily-average'),
+  kpiMonthlyBudget: document.getElementById('kpi-monthly-budget'),
+  budgetProgressFill: document.getElementById('budget-progress-fill'),
+  kpiBudgetPercent: document.getElementById('kpi-budget-percent'),
+  kpiRemainingBalance: document.getElementById('kpi-remaining-balance'),
+  balanceStatusBadge: document.getElementById('balance-status-badge'),
+  kpiSafeDailyAllowance: document.getElementById('kpi-safe-daily-allowance'),
+
+  // Add Form
+  formMonthHint: document.getElementById('form-month-hint'),
+  addExpenseForm: document.getElementById('add-expense-form'),
+  expenseTitleInput: document.getElementById('expense-title-input'),
+  expenseAmountInput: document.getElementById('expense-amount-input'),
+  expenseCategoryInput: document.getElementById('expense-category-input'),
+  expenseDateInput: document.getElementById('expense-date-input'),
+  expensePaymentInput: document.getElementById('expense-payment-input'),
+  formErrorBanner: document.getElementById('form-error-banner'),
+  formErrorText: document.getElementById('form-error-text'),
+
+  // Analytics
+  categoryCountBadge: document.getElementById('category-count-badge'),
+  donutSvg: document.getElementById('donut-svg'),
+  donutSegments: document.getElementById('donut-segments'),
+  chartCenterAmount: document.getElementById('chart-center-amount'),
+  categoryProgressList: document.getElementById('category-progress-list'),
+  topExpensesCount: document.getElementById('top-expenses-count'),
+  topExpensesList: document.getElementById('top-expenses-list'),
+
+  // Records List
+  recordsSubtitle: document.getElementById('records-subtitle'),
+  expenseSearchInput: document.getElementById('expense-search-input'),
+  categoryFilterSelect: document.getElementById('category-filter-select'),
+  expensesContainer: document.getElementById('expenses-container'),
+  emptyStateCard: document.getElementById('empty-state-card'),
+
+  // Edit Modal
+  editExpenseModal: document.getElementById('edit-expense-modal'),
+  closeEditModalBtn: document.getElementById('close-edit-modal-btn'),
+  cancelEditBtn: document.getElementById('cancel-edit-btn'),
+  editExpenseForm: document.getElementById('edit-expense-form'),
+  editExpenseId: document.getElementById('edit-expense-id'),
+  editTitleInput: document.getElementById('edit-title-input'),
+  editAmountInput: document.getElementById('edit-amount-input'),
+  editDateInput: document.getElementById('edit-date-input'),
+  editCategoryInput: document.getElementById('edit-category-input'),
+  editPaymentInput: document.getElementById('edit-payment-input'),
+  editNotesInput: document.getElementById('edit-notes-input'),
+
+  // Budget Modal
+  budgetModal: document.getElementById('budget-modal'),
+  closeBudgetModalBtn: document.getElementById('close-budget-modal-btn'),
+  cancelBudgetBtn: document.getElementById('cancel-budget-btn'),
+  setBudgetForm: document.getElementById('set-budget-form'),
+  budgetTargetMonthLabel: document.getElementById('budget-target-month-label'),
+  budgetTargetInput: document.getElementById('budget-target-input'),
+
+  // Toast
+  toast: document.getElementById('toast'),
+  toastMsg: document.getElementById('toast-msg')
+};
+
+// Filter expenses for current active month
+function getActiveMonthExpenses() {
+  const currentKey = getMonthKey(state.currentDate);
+  return state.expenses.filter(item => item.date && item.date.startsWith(currentKey));
+}
+
+// Populate Category Filter dropdown options
+function populateCategoryFilterDropdown() {
+  if (!elements.categoryFilterSelect) return;
+  const currentVal = elements.categoryFilterSelect.value;
+  elements.categoryFilterSelect.innerHTML = '<option value="ALL">All Categories</option>';
+  
+  Object.keys(CATEGORIES).forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat;
+    opt.textContent = `${CATEGORIES[cat].icon} ${cat}`;
+    elements.categoryFilterSelect.appendChild(opt);
+  });
+
+  elements.categoryFilterSelect.value = currentVal || 'ALL';
+}
+
+// Render Dashboard & Recalculate everything
+function renderDashboard() {
+  const monthName = state.currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const currentKey = getMonthKey(state.currentDate);
+  const activeExpenses = getActiveMonthExpenses();
+
+  // Update Month Labels
+  elements.currentMonthLabel.textContent = monthName;
+  elements.recordsSubtitle.textContent = `Showing expenses for ${monthName}`;
+  elements.formMonthHint.textContent = monthName;
+  elements.budgetTargetMonthLabel.textContent = monthName;
+
+  // Calculate totals
+  const totalSpent = activeExpenses.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+  const monthlyBudget = state.budgets[currentKey] || 2500;
+  const remaining = monthlyBudget - totalSpent;
+  const percentUsed = monthlyBudget > 0 ? (totalSpent / monthlyBudget) * 100 : 0;
+
+  // Calculate day-related metrics
+  const year = state.currentDate.getFullYear();
+  const month = state.currentDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+  const isCurrentCalendarMonth = (today.getFullYear() === year && today.getMonth() === month);
+  const activeDay = isCurrentCalendarMonth ? today.getDate() : daysInMonth;
+  const daysRemaining = Math.max(1, daysInMonth - activeDay);
+
+  const dailyAvg = activeDay > 0 ? totalSpent / activeDay : 0;
+  const safeDailySpend = remaining > 0 ? remaining / daysRemaining : 0;
+
+  // 1. KPI: Total Spent
+  elements.kpiTotalSpent.textContent = formatCurrency(totalSpent);
+  elements.spentCountBadge.textContent = `${activeExpenses.length} ${activeExpenses.length === 1 ? 'item' : 'items'}`;
+  elements.kpiDailyAverage.textContent = `Daily pace: ${formatCurrency(dailyAvg)} / day`;
+
+  // 2. KPI: Monthly Budget
+  elements.kpiMonthlyBudget.textContent = formatCurrency(monthlyBudget);
+  elements.kpiBudgetPercent.textContent = `${Math.min(999, Math.round(percentUsed))}% used`;
+
+  const fillWidth = Math.min(100, Math.max(0, percentUsed));
+  elements.budgetProgressFill.style.width = `${fillWidth}%`;
+  elements.budgetProgressFill.className = 'budget-progress-fill';
+  if (percentUsed >= 100) {
+    elements.budgetProgressFill.classList.add('fill-danger');
+  } else if (percentUsed >= 85) {
+    elements.budgetProgressFill.classList.add('fill-warning');
+  } else {
+    elements.budgetProgressFill.classList.add('fill-safe');
+  }
+
+  // 3. KPI: Remaining Safe Balance
+  elements.kpiRemainingBalance.textContent = formatCurrency(remaining);
+  if (remaining < 0) {
+    elements.kpiRemainingBalance.className = 'kpi-value text-danger';
+    elements.balanceStatusBadge.className = 'kpi-badge badge-danger';
+    elements.balanceStatusBadge.textContent = 'Over Budget';
+    elements.kpiSafeDailyAllowance.textContent = `Exceeded by ${formatCurrency(Math.abs(remaining))}`;
+  } else if (percentUsed >= 85) {
+    elements.kpiRemainingBalance.className = 'kpi-value text-warning';
+    elements.balanceStatusBadge.className = 'kpi-badge badge-warning';
+    elements.balanceStatusBadge.textContent = 'Tight Pace';
+    elements.kpiSafeDailyAllowance.textContent = `Safe daily spend: ${formatCurrency(safeDailySpend)} / day`;
+  } else {
+    elements.kpiRemainingBalance.className = 'kpi-value text-safe';
+    elements.balanceStatusBadge.className = 'kpi-badge badge-safe';
+    elements.balanceStatusBadge.textContent = 'On Track';
+    elements.kpiSafeDailyAllowance.textContent = `Safe daily spend: ${formatCurrency(safeDailySpend)} / day`;
+  }
+
+  // Render Sub-components
+  renderCategoryAnalytics(activeExpenses, totalSpent);
+  renderTopExpenses(activeExpenses);
+  renderExpensesList(activeExpenses);
+}
+
+// Render Category Breakdown and SVG Donut
+function renderCategoryAnalytics(activeExpenses, totalSpent) {
+  const categoryMap = {};
+  activeExpenses.forEach(exp => {
+    const cat = exp.category || 'Miscellaneous';
+    categoryMap[cat] = (categoryMap[cat] || 0) + (parseFloat(exp.amount) || 0);
+  });
+
+  const categories = Object.keys(categoryMap).map(cat => ({
+    name: cat,
+    amount: categoryMap[cat],
+    percent: totalSpent > 0 ? (categoryMap[cat] / totalSpent) * 100 : 0
+  })).sort((a, b) => b.amount - a.amount);
+
+  elements.categoryCountBadge.textContent = `${categories.length} ${categories.length === 1 ? 'category' : 'categories'}`;
+  elements.chartCenterAmount.textContent = formatCurrency(totalSpent);
+
+  // Render SVG Donut
+  elements.donutSegments.innerHTML = '';
+  if (totalSpent > 0 && categories.length > 0) {
+    const radius = 75;
+    const circumference = 2 * Math.PI * radius; // ~471.24
+    let accumulatedOffset = 0;
+
+    categories.forEach(item => {
+      const config = CATEGORIES[item.name] || CATEGORIES['Miscellaneous'];
+      const segmentLength = (item.percent / 100) * circumference;
+
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('class', 'donut-segment');
+      circle.setAttribute('cx', '100');
+      circle.setAttribute('cy', '100');
+      circle.setAttribute('r', radius.toString());
+      circle.setAttribute('stroke', config.color);
+      circle.setAttribute('stroke-dasharray', `${segmentLength} ${circumference}`);
+      circle.setAttribute('stroke-dashoffset', (-accumulatedOffset).toString());
+
+      const tooltip = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      tooltip.textContent = `${item.name}: ${formatCurrency(item.amount)} (${Math.round(item.percent)}%)`;
+      circle.appendChild(tooltip);
+
+      elements.donutSegments.appendChild(circle);
+      accumulatedOffset += segmentLength;
+    });
+  }
+
+  // Render Progress Bars List
+  elements.categoryProgressList.innerHTML = '';
+  if (categories.length === 0) {
+    elements.categoryProgressList.innerHTML = `
+      <div style="text-align: center; color: var(--text-dim); padding: 1.5rem 0; font-size: 0.85rem;">
+        No category expenses logged for this month.
+      </div>
+    `;
+  } else {
+    categories.forEach(item => {
+      const config = CATEGORIES[item.name] || CATEGORIES['Miscellaneous'];
+      const row = document.createElement('div');
+      row.className = 'cat-item-row';
+      row.innerHTML = `
+        <div class="cat-item-info">
+          <span class="cat-name-tag">
+            <span class="cat-dot" style="background-color: ${config.color};"></span>
+            <span>${config.icon} ${escapeHTML(item.name)}</span>
+          </span>
+          <span class="cat-amount-info">
+            <span class="cat-val">${formatCurrency(item.amount)}</span>
+            <span class="cat-pct">${Math.round(item.percent)}%</span>
+          </span>
+        </div>
+        <div class="cat-track">
+          <div class="cat-fill" style="width: ${Math.min(100, item.percent)}%; background-color: ${config.color};"></div>
+        </div>
+      `;
+      elements.categoryProgressList.appendChild(row);
+    });
+  }
+}
+
+// Render Top 5 Largest Expenses
+function renderTopExpenses(activeExpenses) {
+  const sorted = [...activeExpenses].sort((a, b) => (parseFloat(b.amount) || 0) - (parseFloat(a.amount) || 0));
+  const top5 = sorted.slice(0, 5);
+
+  elements.topExpensesCount.textContent = `${top5.length} ${top5.length === 1 ? 'item' : 'items'}`;
+  elements.topExpensesList.innerHTML = '';
+
+  if (top5.length === 0) {
+    elements.topExpensesList.innerHTML = `
+      <div style="text-align: center; color: var(--text-dim); padding: 1.5rem 0; font-size: 0.85rem;">
+        No expenses to display.
+      </div>
+    `;
+    return;
+  }
+
+  top5.forEach((item, index) => {
+    const rank = index + 1;
+    const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : '';
+    const config = CATEGORIES[item.category] || CATEGORIES['Miscellaneous'];
+
+    const div = document.createElement('div');
+    div.className = 'top-expense-item';
+    div.innerHTML = `
+      <div class="top-item-left">
+        <span class="top-rank-badge ${rankClass}">#${rank}</span>
+        <div>
+          <div class="top-item-title">${escapeHTML(item.title)}</div>
+          <div class="top-item-meta">${config.icon} ${escapeHTML(item.category)} • ${formatDateDisplay(item.date)}</div>
+        </div>
+      </div>
+      <div class="top-item-amount">-${formatCurrency(item.amount)}</div>
+    `;
+    elements.topExpensesList.appendChild(div);
+  });
+}
+
+// Render Expenses List with Filters & Search
+function renderExpensesList(activeExpenses) {
+  let filtered = [...activeExpenses];
+
+  // Category filter
+  if (state.filterCategory && state.filterCategory !== 'ALL') {
+    filtered = filtered.filter(item => item.category === state.filterCategory);
+  }
+
+  // Search filter
+  if (state.searchQuery && state.searchQuery.trim() !== '') {
+    const q = state.searchQuery.toLowerCase().trim();
+    filtered = filtered.filter(item => {
+      const matchTitle = (item.title || '').toLowerCase().includes(q);
+      const matchNotes = (item.notes || '').toLowerCase().includes(q);
+      const matchMethod = (item.paymentMethod || '').toLowerCase().includes(q);
+      const matchCategory = (item.category || '').toLowerCase().includes(q);
+      return matchTitle || matchNotes || matchMethod || matchCategory;
+    });
+  }
+
+  // Sort descending by date
+  filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  elements.expensesContainer.innerHTML = '';
+
+  if (filtered.length === 0) {
+    elements.emptyStateCard.classList.remove('hidden');
+    elements.expensesContainer.classList.add('hidden');
+    return;
+  }
+
+  elements.emptyStateCard.classList.add('hidden');
+  elements.expensesContainer.classList.remove('hidden');
+
+  filtered.forEach(item => {
+    const config = CATEGORIES[item.category] || CATEGORIES['Miscellaneous'];
+    const card = document.createElement('div');
+    card.className = 'expense-card';
+    card.dataset.id = item.id;
+
+    card.innerHTML = `
+      <div class="expense-left">
+        <div class="expense-icon-badge" style="background: ${config.bg}; color: ${config.color};">
+          ${config.icon}
+        </div>
+        <div>
+          <div class="expense-title">${escapeHTML(item.title)}</div>
+          <div class="expense-meta">
+            <span>${formatDateDisplay(item.date)}</span>
+            <span class="expense-cat-tag">${escapeHTML(item.category)}</span>
+            ${item.paymentMethod ? `<span>• ${escapeHTML(item.paymentMethod)}</span>` : ''}
+            ${item.notes ? `<span>• "${escapeHTML(item.notes)}"</span>` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="expense-right">
+        <span class="expense-amount">-${formatCurrency(item.amount)}</span>
+        <div class="action-btns">
+          <button class="action-icon-btn edit-btn" title="Edit expense" data-id="${item.id}" aria-label="Edit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+          </button>
+          <button class="action-icon-btn delete-btn" title="Delete expense" data-id="${item.id}" aria-label="Delete">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Hook buttons
+    card.querySelector('.edit-btn').addEventListener('click', () => openEditModal(item.id));
+    card.querySelector('.delete-btn').addEventListener('click', () => deleteExpense(item.id));
+
+    elements.expensesContainer.appendChild(card);
+  });
+}
+
+// Toast Feedback System
+let toastTimer = null;
+function showToast(message) {
+  clearTimeout(toastTimer);
+  elements.toastMsg.textContent = message;
   elements.toast.classList.remove('hidden');
 
-  toastTimeout = setTimeout(() => {
+  toastTimer = setTimeout(() => {
     elements.toast.classList.add('hidden');
   }, 2800);
 }
 
-// Modals Handling
-function openAddExpenseModal() {
-  elements.modalTitle.textContent = 'Add New Expense';
-  elements.editExpenseId.value = '';
-  elements.expenseForm.reset();
-
-  // Set default date to today or within current view month
-  const now = new Date();
-  const year = state.currentDate.getFullYear();
-  const month = state.currentDate.getMonth();
-
-  let defaultDate;
-  if (now.getFullYear() === year && now.getMonth() === month) {
-    defaultDate = now.toISOString().split('T')[0];
-  } else {
-    defaultDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-  }
-
-  elements.formDate.value = defaultDate;
-  elements.formCategory.value = 'Food & Dining';
-  elements.formPayment.value = 'Credit Card';
-
-  elements.expenseModal.classList.remove('hidden');
-  elements.formTitle.focus();
+// Show Form Error
+function showFormError(msg) {
+  elements.formErrorText.textContent = msg;
+  elements.formErrorBanner.classList.remove('hidden');
 }
 
-function openEditExpenseModal(id) {
-  const expense = state.expenses.find(e => e.id === id);
-  if (!expense) return;
-
-  elements.modalTitle.textContent = 'Edit Expense';
-  elements.editExpenseId.value = expense.id;
-  elements.formTitle.value = expense.title;
-  elements.formAmount.value = expense.amount;
-  elements.formDate.value = expense.date;
-  elements.formCategory.value = expense.category;
-  elements.formPayment.value = expense.paymentMethod || 'Credit Card';
-  elements.formNotes.value = expense.notes || '';
-
-  elements.expenseModal.classList.remove('hidden');
-  elements.formTitle.focus();
+function hideFormError() {
+  elements.formErrorBanner.classList.add('hidden');
 }
 
-function closeExpenseModal() {
-  elements.expenseModal.classList.add('hidden');
-}
-
-function openBudgetModal() {
-  const currentKey = getMonthKey(state.currentDate);
-  const currentBudget = state.budgets[currentKey] || 2500;
-  elements.budgetInput.value = currentBudget;
-  elements.budgetModal.classList.remove('hidden');
-  elements.budgetInput.focus();
-}
-
-function closeBudgetModal() {
-  elements.budgetModal.classList.add('hidden');
-}
-
-// Expense Actions
-function handleExpenseSubmit(e) {
+// Add Expense Handler
+function handleAddExpense(e) {
   e.preventDefault();
+  hideFormError();
 
-  const id = elements.editExpenseId.value;
-  const title = elements.formTitle.value.trim();
-  const amount = parseFloat(elements.formAmount.value);
-  const date = elements.formDate.value;
-  const category = elements.formCategory.value;
-  const paymentMethod = elements.formPayment.value;
-  const notes = elements.formNotes.value.trim();
+  const title = elements.expenseTitleInput.value.trim();
+  const amount = parseFloat(elements.expenseAmountInput.value);
+  const category = elements.expenseCategoryInput.value;
+  const date = elements.expenseDateInput.value;
+  const paymentMethod = elements.expensePaymentInput.value;
 
-  if (!title || isNaN(amount) || amount <= 0 || !date) {
-    showToast('Please fill out all required fields correctly.');
+  if (!title) {
+    showFormError('Please enter a description for the expense.');
+    elements.expenseTitleInput.focus();
     return;
   }
 
-  if (id) {
-    // Update existing
-    const index = state.expenses.findIndex(e => e.id === id);
-    if (index !== -1) {
-      state.expenses[index] = {
-        ...state.expenses[index],
-        title,
-        amount,
-        date,
-        category,
-        paymentMethod,
-        notes
-      };
-      showToast('Expense updated successfully!');
-    }
-  } else {
-    // Add new
-    const newExpense = {
-      id: 'exp-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+  if (isNaN(amount) || amount <= 0) {
+    showFormError('Please enter a valid positive dollar amount.');
+    elements.expenseAmountInput.focus();
+    return;
+  }
+
+  if (!date) {
+    showFormError('Please select a valid date.');
+    elements.expenseDateInput.focus();
+    return;
+  }
+
+  const newExpense = {
+    id: 'exp-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+    title,
+    amount,
+    category,
+    date,
+    paymentMethod,
+    notes: ''
+  };
+
+  state.expenses.unshift(newExpense);
+  saveExpenses();
+
+  // Reset inputs
+  elements.expenseTitleInput.value = '';
+  elements.expenseAmountInput.value = '';
+  hideFormError();
+
+  renderDashboard();
+  showToast(`Added: ${title} (${formatCurrency(amount)})`);
+}
+
+// Edit Modal Handling
+function openEditModal(id) {
+  const item = state.expenses.find(e => e.id === id);
+  if (!item) return;
+
+  elements.editExpenseId.value = item.id;
+  elements.editTitleInput.value = item.title;
+  elements.editAmountInput.value = item.amount;
+  elements.editDateInput.value = item.date;
+  elements.editCategoryInput.value = item.category;
+  elements.editPaymentInput.value = item.paymentMethod || 'Credit Card';
+  elements.editNotesInput.value = item.notes || '';
+
+  elements.editExpenseModal.classList.remove('hidden');
+  elements.editTitleInput.focus();
+}
+
+function closeEditModal() {
+  elements.editExpenseModal.classList.add('hidden');
+}
+
+function handleSaveEdit(e) {
+  e.preventDefault();
+
+  const id = elements.editExpenseId.value;
+  const title = elements.editTitleInput.value.trim();
+  const amount = parseFloat(elements.editAmountInput.value);
+  const date = elements.editDateInput.value;
+  const category = elements.editCategoryInput.value;
+  const paymentMethod = elements.editPaymentInput.value;
+  const notes = elements.editNotesInput.value.trim();
+
+  if (!title || isNaN(amount) || amount <= 0 || !date) {
+    alert('Please fill out all required fields with valid values.');
+    return;
+  }
+
+  const idx = state.expenses.findIndex(e => e.id === id);
+  if (idx !== -1) {
+    state.expenses[idx] = {
+      ...state.expenses[idx],
       title,
       amount,
       date,
@@ -616,32 +660,45 @@ function handleExpenseSubmit(e) {
       paymentMethod,
       notes
     };
-    state.expenses.unshift(newExpense);
-    showToast('Expense added successfully!');
+    saveExpenses();
+    closeEditModal();
+    renderDashboard();
+    showToast('Expense updated successfully!');
   }
-
-  saveExpenses();
-  closeExpenseModal();
-  updateDashboard();
 }
 
+// Delete Expense Handler
 function deleteExpense(id) {
-  const expense = state.expenses.find(e => e.id === id);
-  if (!expense) return;
+  const item = state.expenses.find(e => e.id === id);
+  if (!item) return;
 
-  if (confirm(`Are you sure you want to delete "${expense.title}"?`)) {
+  if (confirm(`Are you sure you want to delete "${item.title}"?`)) {
     state.expenses = state.expenses.filter(e => e.id !== id);
     saveExpenses();
-    updateDashboard();
+    renderDashboard();
     showToast('Expense deleted.');
   }
 }
 
-function handleBudgetSubmit(e) {
+// Budget Modal Handling
+function openBudgetModal() {
+  const currentKey = getMonthKey(state.currentDate);
+  const currentBudget = state.budgets[currentKey] || 2500;
+  elements.budgetTargetInput.value = currentBudget;
+  elements.budgetModal.classList.remove('hidden');
+  elements.budgetTargetInput.focus();
+}
+
+function closeBudgetModal() {
+  elements.budgetModal.classList.add('hidden');
+}
+
+function handleSaveBudget(e) {
   e.preventDefault();
-  const newBudget = parseFloat(elements.budgetInput.value);
+  const newBudget = parseFloat(elements.budgetTargetInput.value);
+
   if (isNaN(newBudget) || newBudget <= 0) {
-    showToast('Please enter a valid budget amount.');
+    alert('Please enter a valid positive target budget.');
     return;
   }
 
@@ -649,31 +706,46 @@ function handleBudgetSubmit(e) {
   state.budgets[currentKey] = newBudget;
   saveBudgets();
   closeBudgetModal();
-  updateDashboard();
-  showToast('Monthly budget updated!');
+  renderDashboard();
+  showToast('Monthly target budget saved!');
 }
 
-// Month Navigation
+// Month Navigation Handlers
 function changeMonth(delta) {
   state.currentDate.setMonth(state.currentDate.getMonth() + delta);
-  updateDashboard();
+  setDefaultFormDate();
+  renderDashboard();
 }
 
 function jumpToCurrentMonth() {
   state.currentDate = new Date();
-  updateDashboard();
+  setDefaultFormDate();
+  renderDashboard();
 }
 
-// Export to CSV
+// Set default form date matching active view month
+function setDefaultFormDate() {
+  const now = new Date();
+  const year = state.currentDate.getFullYear();
+  const month = state.currentDate.getMonth();
+
+  if (now.getFullYear() === year && now.getMonth() === month) {
+    elements.expenseDateInput.value = now.toISOString().split('T')[0];
+  } else {
+    elements.expenseDateInput.value = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  }
+}
+
+// Export Monthly Data to CSV
 function exportMonthlyCSV() {
-  const monthExpenses = getActiveMonthExpenses();
-  if (monthExpenses.length === 0) {
+  const activeExpenses = getActiveMonthExpenses();
+  if (activeExpenses.length === 0) {
     showToast('No expenses to export for this month.');
     return;
   }
 
-  const headers = ['ID', 'Title', 'Amount ($)', 'Category', 'Date', 'Payment Method', 'Notes'];
-  const rows = monthExpenses.map(exp => [
+  const headers = ['ID', 'Description', 'Amount ($)', 'Category', 'Date', 'Payment Method', 'Notes'];
+  const rows = activeExpenses.map(exp => [
     `"${exp.id}"`,
     `"${(exp.title || '').replace(/"/g, '""')}"`,
     exp.amount.toFixed(2),
@@ -683,8 +755,8 @@ function exportMonthlyCSV() {
     `"${(exp.notes || '').replace(/"/g, '""')}"`
   ]);
 
-  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-  const encodedUri = encodeURI(csvContent);
+  const csvString = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const encodedUri = encodeURI(csvString);
   const link = document.createElement('a');
   const monthKey = getMonthKey(state.currentDate);
   link.setAttribute('href', encodedUri);
@@ -692,60 +764,70 @@ function exportMonthlyCSV() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  showToast(`Exported ${monthExpenses.length} records to CSV!`);
+
+  showToast(`Exported ${activeExpenses.length} records to CSV!`);
 }
 
-// Event Listeners Initialization
+// Setup Event Listeners
 function initEventListeners() {
+  // Navigation
   elements.prevMonthBtn.addEventListener('click', () => changeMonth(-1));
   elements.nextMonthBtn.addEventListener('click', () => changeMonth(1));
-  elements.todayMonthBtn.addEventListener('click', jumpToCurrentMonth);
+  elements.todayBtn.addEventListener('click', jumpToCurrentMonth);
 
-  elements.openAddModalBtn.addEventListener('click', openAddExpenseModal);
-  elements.emptyAddBtn.addEventListener('click', openAddExpenseModal);
-  elements.closeModalBtn.addEventListener('click', closeExpenseModal);
-  elements.cancelModalBtn.addEventListener('click', closeExpenseModal);
+  // Forms
+  elements.addExpenseForm.addEventListener('submit', handleAddExpense);
+  elements.expenseTitleInput.addEventListener('input', hideFormError);
+  elements.expenseAmountInput.addEventListener('input', hideFormError);
 
-  elements.editBudgetBtn.addEventListener('click', openBudgetModal);
-  elements.closeBudgetModalBtn.addEventListener('click', closeBudgetModal);
-  elements.cancelBudgetModalBtn.addEventListener('click', closeBudgetModal);
-
-  elements.expenseForm.addEventListener('submit', handleExpenseSubmit);
-  elements.budgetForm.addEventListener('submit', handleBudgetSubmit);
-
-  elements.exportBtn.addEventListener('click', exportMonthlyCSV);
-
-  // Filters
-  elements.categoryFilterSelect.addEventListener('change', (e) => {
-    state.filterCategory = e.target.value;
-    renderTransactions(getActiveMonthExpenses());
-  });
-
-  elements.expenseSearchInput.addEventListener('input', (e) => {
+  // Search & Filter
+  elements.expenseSearchInput.addEventListener('input', e => {
     state.searchQuery = e.target.value;
-    renderTransactions(getActiveMonthExpenses());
+    renderExpensesList(getActiveMonthExpenses());
   });
 
-  // Modal Backdrop Click to close
-  elements.expenseModal.addEventListener('click', (e) => {
-    if (e.target === elements.expenseModal) closeExpenseModal();
+  elements.categoryFilterSelect.addEventListener('change', e => {
+    state.filterCategory = e.target.value;
+    renderExpensesList(getActiveMonthExpenses());
   });
-  elements.budgetModal.addEventListener('click', (e) => {
+
+  // Budget Modal
+  elements.openBudgetModalBtn.addEventListener('click', openBudgetModal);
+  elements.quickEditBudgetBtn.addEventListener('click', openBudgetModal);
+  elements.closeBudgetModalBtn.addEventListener('click', closeBudgetModal);
+  elements.cancelBudgetBtn.addEventListener('click', closeBudgetModal);
+  elements.setBudgetForm.addEventListener('submit', handleSaveBudget);
+
+  // Edit Modal
+  elements.closeEditModalBtn.addEventListener('click', closeEditModal);
+  elements.cancelEditBtn.addEventListener('click', closeEditModal);
+  elements.editExpenseForm.addEventListener('submit', handleSaveEdit);
+
+  // CSV Export
+  elements.exportCsvBtn.addEventListener('click', exportMonthlyCSV);
+
+  // Backdrop clicks
+  elements.editExpenseModal.addEventListener('click', e => {
+    if (e.target === elements.editExpenseModal) closeEditModal();
+  });
+  elements.budgetModal.addEventListener('click', e => {
     if (e.target === elements.budgetModal) closeBudgetModal();
   });
 
   // Escape key to close modals
-  window.addEventListener('keydown', (e) => {
+  window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      closeExpenseModal();
+      closeEditModal();
       closeBudgetModal();
     }
   });
 }
 
-// App Launch
+// App Initialization
 document.addEventListener('DOMContentLoaded', () => {
   loadState();
+  populateCategoryFilterDropdown();
+  setDefaultFormDate();
   initEventListeners();
-  updateDashboard();
+  renderDashboard();
 });

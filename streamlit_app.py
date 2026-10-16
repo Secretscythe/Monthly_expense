@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Remove default Streamlit top header, margins, and padding for a clean, full-screen app
+# Custom CSS to maximize viewport area and remove Streamlit default margins
 st.markdown("""
 <style>
     #MainMenu {visibility: hidden;}
@@ -42,11 +42,9 @@ with open(os.path.join(base_dir, "style.css"), "r", encoding="utf-8") as f:
 with open(os.path.join(base_dir, "app.js"), "r", encoding="utf-8") as f:
     js = f.read()
 
-# Inline CSS
+# Inline CSS and JS for self-contained rendering
 html = re.sub(r'<link\s+rel="stylesheet"\s+href="style\.css"\s*/?>', f"<style>\n{css}\n</style>", html)
-
-# Inline JS
 html = re.sub(r'<script\s+src="app\.js"\s*></script>', f"<script>\n{js}\n</script>", html)
 
 # Render HTML in Streamlit
-components.html(html, height=1100, scrolling=True)
+components.html(html, height=1150, scrolling=True)

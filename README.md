@@ -1,48 +1,67 @@
 # SpendFlow - Monthly Expense Tracker 💸
 
-A simple, fast, and modern monthly expense tracker built with vanilla HTML, CSS, and JavaScript.
+A fast, clean, and modern monthly expense tracker built to work seamlessly on both **GitHub Pages** (vanilla HTML5/CSS3/JS) and **Streamlit Cloud** (Python wrapper).
 
-![SpendFlow Preview](https://img.shields.io/badge/Status-Complete-success?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Complete-success?style=for-the-badge)
 ![Tech Stack](https://img.shields.io/badge/Stack-HTML5%20%7C%20CSS3%20%7C%20Vanilla%20JS-blue?style=for-the-badge)
-[![Live Demo](https://img.shields.io/badge/Demo-Live%20Website-brightgreen?style=for-the-badge&logo=github)](https://secretscythe.github.io/Monthly_expense/)
-
-🌐 **Live URL**: [https://secretscythe.github.io/Monthly_expense/](https://secretscythe.github.io/Monthly_expense/)
-
+![Deployment](https://img.shields.io/badge/Compatible-GitHub%20Pages%20%7C%20Streamlit-brightgreen?style=for-the-badge)
 
 ---
 
 ## ✨ Features
 
-- **Dashboard & KPIs**: Real-time tracking of Total Spent, Monthly Budget, and Remaining Safe Balance.
-- **Visual Analytics**: Interactive dynamic SVG Donut chart and category spending breakdown with progress bars.
-- **Month-by-Month Navigation**: Effortlessly switch between months or jump to the current month.
-- **Customizable Budgets**: Set and update spending limits per month with status warnings.
-- **Categorization**: 10 distinct expense categories (Food & Dining, Housing, Utilities, Transportation, Entertainment, etc.) with custom themes and icons.
-- **Search & Filter**: Instant search by title/notes and category filtering.
-- **Offline & Persistent**: Automatically preserves all your records in local storage.
-- **CSV Data Export**: One-click export of monthly expense records to CSV.
-- **Modern Responsive Design**: Glassmorphic dark UI, micro-animations, and full mobile & desktop responsiveness.
+- **Dashboard & Real-time KPIs**: Instant tracking of Total Spent, Monthly Target Budget, and Remaining Safe Balance.
+- **Budget Pacing & Safe Daily Spend**: Automatically computes safe daily spending allowance based on days remaining in the month.
+- **Visual Category Analytics**: Dynamic SVG Donut chart and category spending progress bars with percentages.
+- **Quick Log Entry**: Fast inline form to log expenses in seconds with description, amount, category, date, and payment method.
+- **Month-by-Month Navigation**: Effortlessly step forward/backward through months, jump to today's month, and customize budget per month.
+- **Search & Filter**: Real-time search across titles, notes, and payment methods plus category filter.
+- **Top 5 Largest Outflows**: Instant glance at the highest single expenses of the month with ranked badges.
+- **Edit & Delete**: Full modal editing and delete controls for every recorded transaction.
+- **Offline & Persistent**: Automatically preserves all records and budgets in browser `localStorage`.
+- **CSV Data Export**: One-click download of the active month's expense records.
+- **Dual Deployment Ready**:
+  - Run directly as a static web app on **GitHub Pages**.
+  - Run as an interactive app on **Streamlit / Streamlit Cloud**.
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Running Locally
 
-Simply open `index.html` in any modern web browser, or run a lightweight local server:
+### Option 1: As a Web App (GitHub Pages style)
+
+Simply open `index.html` in your browser, or run a lightweight local server:
 
 ```bash
-# Using Python
+# Using Python built-in server
 python3 -m http.server 3000
 ```
 
-Then visit:
+Then open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Option 2: Using Streamlit
+
+1. Install dependencies:
+```bash
+pip install -r requirements.txt
 ```
-http://localhost:3000
+
+2. Run the Streamlit application:
+```bash
+streamlit run streamlit_app.py
 ```
 
 ---
 
-## 🛠️ Built With
+## 🌐 Deploying
 
-- **HTML5**: Semantic and accessible markup.
-- **Vanilla CSS**: Custom styling, glassmorphism, responsive grid & flexbox layouts, Google Fonts (Plus Jakarta Sans & Outfit).
-- **Vanilla JavaScript**: Pure JS without heavy framework dependencies, localStorage state management, and SVG chart generation.
+### GitHub Pages
+1. Push this repository to GitHub.
+2. In your repository settings, go to **Pages**.
+3. Under **Build and deployment**, select `Deploy from a branch` and choose `main` / `/ (root)`.
+4. Your tracker will be live at `https://<username>.github.io/<repo-name>/`.
+
+### Streamlit Cloud
+1. Connect your GitHub repository at [share.streamlit.io](https://share.streamlit.io).
+2. Set the Main file path to `streamlit_app.py`.
+3. Click **Deploy**!
