@@ -10,16 +10,19 @@ A fast, clean, and modern monthly expense tracker built to work seamlessly on bo
 
 ## ✨ Features
 
-- **Dashboard & Real-time KPIs**: Instant tracking of Total Spent, Monthly Target Budget, and Remaining Safe Balance.
-- **Budget Pacing & Safe Daily Spend**: Automatically computes safe daily spending allowance based on days remaining in the month.
+- **Interactive Monthly Calendar**: Full calendar grid with individual day accounting, per-day income/expense badges, and single-click day isolation.
+- **Add & Deduct Tracking**: Dual-mode logging for income inflow (`+ Add`) and expense deductions (`− Deduct`) with 2-step verification for starting balance.
+- **Net Savings & Savings Rate**: Automatic computation of net savings (`Income − Expenses`) and savings percentage.
+- **Add, Rename, & Delete Categories**: Complete Category Manager to add custom categories, rename existing categories (with automatic transaction re-linking), customize emoji icons & color swatches, or delete categories with safe transaction reassignment.
+- **Spending Trend Analytics**: Interactive daily and weekly spending chart with average, peak expense, period-over-period trendline, and hover breakdown.
+- **Month-over-Month & YTD Totals**: 12-month historical performance table with spending change deltas (`▲ / ▼`), interactive month jumping, and Year-to-Date totals.
 - **Visual Category Analytics**: Dynamic SVG Donut chart and category spending progress bars with percentages.
-- **Quick Log Entry**: Fast inline form to log expenses in seconds with description, amount, category, date, and payment method.
-- **Month-by-Month Navigation**: Effortlessly step forward/backward through months, jump to today's month, and customize budget per month.
-- **Search & Filter**: Real-time search across titles, notes, and payment methods plus category filter.
-- **Top 5 Largest Outflows**: Instant glance at the highest single expenses of the month with ranked badges.
-- **Edit & Delete**: Full modal editing and delete controls for every recorded transaction.
-- **Offline & Persistent**: Automatically preserves all records and budgets in browser `localStorage`.
-- **CSV Data Export**: One-click download of the active month's expense records.
+- **Quick Log Entry**: Fast inline form to log expenses and income in seconds with category, note, date, and amount.
+- **Search & Filter**: Real-time filtering by transaction type (All, Deductions, Additions) and categories.
+- **Robust Input Validation & Real-Time UX**: Instant visual validation with glowing red borders, shake animations, live character counters (Note 100 char limit, Category 32 char limit), numeric range checks, and safe date verification.
+- **One-Click Sample Data & Clear**: Quickly load realistic demo financial data (bi-weekly salaries, rent, groceries, utilities, investments) across multiple months to explore charts and trends, or reset all logged entries to zero with safe two-step confirmation.
+- **Offline & Persistent**: Automatically preserves all entries, budgets, and custom categories in browser `localStorage`.
+- **CSV Data Export**: One-click download of the active month's financial records.
 - **Dual Deployment Ready**:
   - Run directly as a static web app on **GitHub Pages**.
   - Run as an interactive app on **Streamlit / Streamlit Cloud**.

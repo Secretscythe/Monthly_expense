@@ -5,7 +5,7 @@ import re
 
 # Configure page settings
 st.set_page_config(
-    page_title="SpendFlow | Monthly Expense Tracker",
+    page_title="SpendFlow | Daily & Weekly Money Tracker",
     page_icon="💸",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -47,4 +47,4 @@ html = re.sub(r'<link\s+rel="stylesheet"\s+href="style\.css"\s*/?>', lambda _: f
 html = re.sub(r'<script\s+src="app\.js"\s*></script>', lambda _: f"<script>\n{js}\n</script>", html)
 
 # Render HTML in Streamlit
-components.html(html, height=1150, scrolling=True)
+components.html(html, height=1800, scrolling=True)

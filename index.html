@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SpendFlow | Monthly Expense Tracker</title>
-  <meta name="description" content="A simple, fast, and modern monthly expense tracker with on-screen inline inputs." />
+  <title>SpendFlow | Monthly Expense & Income Tracker</title>
+  <meta name="description" content="A simple, fast, and modern monthly expense and income tracker with an interactive daily calendar." />
   
   <!-- Modern Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,7 +29,7 @@
         </div>
         <div>
           <h1 class="brand-title">SpendFlow</h1>
-          <p class="brand-subtitle">Monthly Expense Tracker</p>
+          <p class="brand-subtitle">Monthly Tracker with Daily Calendar</p>
         </div>
       </div>
 
@@ -47,43 +47,105 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
 
-        <button type="button" id="today-btn" class="pill-btn secondary-pill" title="Jump to Current Month">Today</button>
+        <button type="button" id="today-btn" class="pill-btn secondary-pill" title="Jump to Current Month / Today">Today</button>
       </div>
 
       <!-- Header Actions -->
       <div class="header-actions">
+        <button type="button" id="load-sample-btn" class="pill-btn secondary-pill" title="Load realistic sample income and expenses">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          <span>Sample Data</span>
+        </button>
+        <button type="button" id="clear-all-btn" class="pill-btn secondary-pill clear-data-btn" title="Clear all logged income and expenses">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          <span>Clear</span>
+        </button>
         <button type="button" id="export-csv-btn" class="pill-btn secondary-pill" title="Export monthly records to CSV">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           <span>Export CSV</span>
         </button>
       </div>
     </header>
 
-    <!-- Key Performance Indicator (KPI) Cards -->
-    <section class="kpi-grid">
-      <!-- Total Spent Card -->
-      <div class="kpi-card card-spent">
-        <div class="kpi-header">
-          <span class="kpi-label">Total Spent</span>
-          <span id="spent-count-badge" class="kpi-badge badge-neutral">0 items</span>
+    <!-- INTERACTIVE MONTHLY CALENDAR GRID (ACCOUNT FOR INDIVIDUAL DAYS) -->
+    <section class="glass-card calendar-card" id="calendar-section">
+      <div class="calendar-top-bar">
+        <div class="calendar-selected-info">
+          <span class="section-icon">📅</span>
+          <div>
+            <h2 class="card-title" style="font-size: 1.05rem;">Monthly Calendar</h2>
+            <p id="calendar-selected-label" class="card-subtitle">Showing all days • Click any day to inspect or log for that day</p>
+          </div>
         </div>
-        <div id="kpi-total-spent" class="kpi-value">$0.00</div>
-        <div id="kpi-daily-average" class="kpi-subtext">Daily pace: $0.00 / day</div>
+        <div class="calendar-actions">
+          <button type="button" id="calendar-all-month-btn" class="pill-btn secondary-pill btn-sm" title="View records for entire month">
+            <span>View All Month</span>
+          </button>
+        </div>
       </div>
 
-      <!-- BALANCE CARD WITH TWO-STEP VERIFICATION EDITING -->
+      <!-- 7 Day of Week Columns -->
+      <div class="calendar-weekdays">
+        <div>Sun</div>
+        <div>Mon</div>
+        <div>Tue</div>
+        <div>Wed</div>
+        <div>Thu</div>
+        <div>Fri</div>
+        <div>Sat</div>
+      </div>
+
+      <!-- Calendar Days Grid (Populated dynamically) -->
+      <div id="calendar-grid" class="calendar-grid">
+        <!-- Cells generated via JS -->
+      </div>
+    </section>
+
+    <!-- Key Performance Indicator (KPI) Cards: Income, Expenses, Net Savings, Savings Rate, Total Balance -->
+    <section class="kpi-grid">
+      <!-- 1. Total Income Card -->
+      <div class="kpi-card card-income">
+        <div class="kpi-header">
+          <span class="kpi-label">Total Income</span>
+          <span id="income-count-badge" class="kpi-badge badge-neutral">0 additions</span>
+        </div>
+        <div id="kpi-total-income" class="kpi-value text-safe">+$0.00</div>
+        <div id="kpi-income-subtext" class="kpi-subtext">Inflow for this period</div>
+      </div>
+
+      <!-- 2. Total Expenses Card -->
+      <div class="kpi-card card-spent">
+        <div class="kpi-header">
+          <span class="kpi-label">Total Expenses</span>
+          <span id="expense-count-badge" class="kpi-badge badge-neutral">0 deductions</span>
+        </div>
+        <div id="kpi-total-expenses" class="kpi-value text-danger">-$0.00</div>
+        <div id="kpi-expenses-subtext" class="kpi-subtext">Daily spend: $0.00 / day</div>
+      </div>
+
+      <!-- 3. Net Savings & Savings Rate Card -->
+      <div class="kpi-card card-savings">
+        <div class="kpi-header">
+          <span class="kpi-label">Net Savings</span>
+          <span id="savings-rate-badge" class="kpi-badge badge-safe">0% Rate</span>
+        </div>
+        <div id="kpi-net-savings" class="kpi-value text-safe">+$0.00</div>
+        <div id="kpi-savings-subtext" class="kpi-subtext">Savings rate: 0.0% of income</div>
+      </div>
+
+      <!-- 4. TOTAL CURRENT BALANCE WITH TWO-STEP VERIFICATION EDITING -->
       <div class="kpi-card card-budget">
         <div class="kpi-header">
-          <span class="kpi-label">Balance</span>
-          <span id="budget-saved-tag" class="kpi-badge badge-neutral">Target</span>
+          <span class="kpi-label">Current Balance</span>
+          <span id="balance-status-badge" class="kpi-badge badge-neutral">Active</span>
         </div>
 
-        <!-- Mode A: Normal View (Displays Balance and Step 1 "Edit Balance" button) -->
+        <!-- Mode A: Normal View (Displays Balance and Step 1 "Edit Base" button) -->
         <div id="balance-view-mode" class="balance-display-row">
-          <div id="kpi-monthly-budget" class="kpi-value">$2,500.00</div>
-          <button type="button" id="start-edit-balance-btn" class="pill-btn secondary-pill btn-sm" title="Step 1: Click to unlock balance editing">
+          <div id="kpi-total-balance" class="kpi-value">$2,500.00</div>
+          <button type="button" id="start-edit-balance-btn" class="pill-btn secondary-pill btn-sm" title="Step 1: Click to unlock starting balance editing">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-            <span>Edit Balance</span>
+            <span>Edit Base</span>
           </button>
         </div>
 
@@ -91,84 +153,95 @@
         <div id="balance-edit-mode" class="balance-edit-row hidden">
           <div class="input-with-prefix inline-budget-input-wrap">
             <span class="input-prefix">$</span>
-            <input type="number" id="inline-budget-input" class="quick-input with-prefix inline-budget-input" placeholder="2500" step="50" min="1" aria-label="New Balance" />
+            <input type="number" id="inline-budget-input" class="quick-input with-prefix inline-budget-input" placeholder="2500" step="50" min="0" aria-label="New Starting Balance" />
           </div>
           <div class="balance-edit-btns">
-            <button type="button" id="confirm-save-balance-btn" class="pill-btn primary-pill btn-sm" title="Step 2: Confirm and save new balance">Confirm</button>
+            <button type="button" id="confirm-save-balance-btn" class="pill-btn primary-pill btn-sm" title="Step 2: Confirm and save starting balance">Confirm</button>
             <button type="button" id="cancel-edit-balance-btn" class="pill-btn secondary-pill btn-sm" title="Cancel without saving">Cancel</button>
           </div>
         </div>
 
-        <div class="budget-progress-wrap">
-          <div class="budget-progress-bar">
-            <div id="budget-progress-fill" class="budget-progress-fill" style="width: 0%;"></div>
-          </div>
-          <span id="kpi-budget-percent" class="budget-percent-text">0% used</span>
-        </div>
-      </div>
-
-      <!-- Remaining Safe Balance Card -->
-      <div class="kpi-card card-balance">
-        <div class="kpi-header">
-          <span class="kpi-label">Remaining Safe Balance</span>
-          <span id="balance-status-badge" class="kpi-badge badge-safe">On Track</span>
-        </div>
-        <div id="kpi-remaining-balance" class="kpi-value text-safe">$2,500.00</div>
-        <div id="kpi-safe-daily-allowance" class="kpi-subtext">Safe daily spend: $80.65 / day</div>
+        <div id="kpi-balance-subtext" class="kpi-subtext">Starting: $2,500.00</div>
       </div>
     </section>
 
-    <!-- ULTRA-FAST QUICK EXPENSE LOG: JUST AMOUNT SPENT & CATEGORY -->
+    <!-- QUICK AMOUNT LOGGER (ADD MONEY & DEDUCT MONEY) -->
     <section id="add-expense-section" class="glass-card quick-log-card">
       <div class="section-header">
         <div class="section-title-wrap">
           <div id="form-section-icon" class="section-icon">⚡</div>
           <div>
-            <h2 id="form-section-title" class="section-title">Quick Log Expense</h2>
+            <h2 id="form-section-title" class="section-title">Quick Amount Logger</h2>
             <p id="form-section-subtitle" class="section-subtitle">
-              Enter amount and category • Press <kbd class="kbd-hint">Enter ↵</kbd> to save immediately
+              Add money (+ income) or deduct money (− expense) for any day • Press <kbd class="kbd-hint">Enter ↵</kbd> to save
             </p>
           </div>
         </div>
       </div>
 
-      <!-- Just 2 clean inputs: Amount & Category! -->
+      <!-- Streamlined row: Action Mode, Date, Amount, Category, Custom specify, Note, Submit -->
       <div class="quick-log-row streamlined">
         <input type="hidden" id="editing-expense-id" value="" />
 
-        <!-- 1. Amount Spent -->
-        <div class="input-block flex-amount">
-          <label for="expense-amount-input" class="quick-label">Amount Spent ($)</label>
-          <div class="input-with-prefix">
-            <span class="input-prefix">$</span>
-            <input type="number" id="expense-amount-input" class="quick-input with-prefix amount-highlight-input" placeholder="0.00" step="0.01" min="0.01" autofocus />
+        <!-- 1. Action Mode: Deduct vs Add -->
+        <div class="input-block flex-mode">
+          <label class="quick-label">Action</label>
+          <div class="mode-toggle-group">
+            <button type="button" id="mode-deduct-btn" class="mode-pill active" title="Deduct money (expense/outflow)">− Deduct</button>
+            <button type="button" id="mode-add-btn" class="mode-pill" title="Add money (income/deposit)">+ Add</button>
           </div>
         </div>
 
-        <!-- 2. Category -->
+        <!-- 2. Date Picker (Account for individual days) -->
+        <div class="input-block flex-day">
+          <label for="expense-date-input" class="quick-label">Date</label>
+          <input type="date" id="expense-date-input" class="quick-input" min="1970-01-01" max="2099-12-31" required />
+        </div>
+
+        <!-- 3. Amount -->
+        <div class="input-block flex-amount">
+          <label for="expense-amount-input" class="quick-label" id="amount-input-label">Amount to Deduct ($)</label>
+          <div class="input-with-prefix" id="amount-input-wrapper">
+            <span class="input-prefix" id="amount-prefix-sign">-$</span>
+            <input type="number" id="expense-amount-input" class="quick-input with-prefix amount-highlight-input" placeholder="0.00" step="0.01" min="0.01" max="100000000" autofocus required />
+          </div>
+        </div>
+
+        <!-- 4. Category (Dynamic: Expense Categories or Income Categories) -->
         <div class="input-block flex-category">
-          <label for="expense-category-input" class="quick-label">Category</label>
-          <select id="expense-category-input" class="quick-input custom-select">
-            <option value="Food & Dining">🍔 Food & Dining</option>
-            <option value="Housing & Rent">🏠 Housing & Rent</option>
-            <option value="Utilities & Bills">⚡ Utilities & Bills</option>
-            <option value="Transportation">🚗 Transportation</option>
-            <option value="Shopping & Retail">🛍️ Shopping & Retail</option>
-            <option value="Entertainment">🎬 Entertainment</option>
-            <option value="Healthcare">💊 Healthcare</option>
-            <option value="Education">📚 Education</option>
-            <option value="Personal Care">✨ Personal Care</option>
-            <option value="Miscellaneous">📦 Miscellaneous</option>
+          <div class="label-with-action">
+            <label for="expense-category-input" class="quick-label">Category</label>
+            <button type="button" id="quick-manage-cat-btn" class="text-link-btn" title="Add, rename, or delete categories">⚙️ Manage</button>
+          </div>
+          <select id="expense-category-input" class="quick-input custom-select" required>
+            <!-- Dynamically populated via JS depending on Add vs Deduct mode -->
           </select>
         </div>
 
-        <!-- 3. Log Button -->
+        <!-- 5. Optional "Specify Other" Input (Appears when 'Other' category is selected) -->
+        <div id="custom-category-block" class="input-block flex-custom-cat hidden">
+          <div class="label-with-action">
+            <label for="custom-category-input" class="quick-label">Specify "Other"</label>
+            <span id="custom-cat-counter" class="char-counter">0/32</span>
+          </div>
+          <input type="text" id="custom-category-input" class="quick-input" placeholder="e.g. Pet, Bonus" maxlength="32" />
+        </div>
+
+        <!-- 6. Optional Note/Description -->
+        <div class="input-block flex-note">
+          <div class="label-with-action">
+            <label for="expense-note-input" class="quick-label">Note (optional)</label>
+            <span id="note-char-counter" class="char-counter">0/100</span>
+          </div>
+          <input type="text" id="expense-note-input" class="quick-input" placeholder="e.g. Grocery, Paycheck" maxlength="100" />
+        </div>
+
+        <!-- 7. Submit Button -->
         <div class="input-block flex-auto">
           <label class="quick-label">&nbsp;</label>
           <div class="form-btn-group">
             <button type="button" id="add-expense-submit-btn" class="pill-btn primary-pill submit-btn">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              <span id="submit-btn-text">Log Expense</span>
+              <span id="submit-btn-text">− Deduct Money</span>
             </button>
             <button type="button" id="cancel-edit-btn" class="pill-btn secondary-pill submit-btn hidden" title="Cancel editing">
               Cancel
@@ -180,20 +253,51 @@
       <!-- Instant Validation Error Message Banner -->
       <div id="form-error-banner" class="error-banner hidden" role="alert">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <span id="form-error-text">Please enter a valid amount spent.</span>
+        <span id="form-error-text">Please enter a valid amount.</span>
       </div>
     </section>
 
     <!-- Main Analytics & Breakdown Row -->
     <div class="main-dashboard-grid">
+      <!-- Days of the Week Activity Bar Chart -->
+      <section class="glass-card week-activity-card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">Days of the Week Breakdown</h3>
+            <p class="card-subtitle">Sun – Sat additions & deductions this month</p>
+          </div>
+          <span id="week-active-day-badge" class="kpi-badge badge-neutral">All Days</span>
+        </div>
+
+        <!-- 7-day Bar chart (Sun to Sat) -->
+        <div id="week-bars-chart" class="week-chart-container">
+          <!-- Dynamically populated via JS -->
+        </div>
+
+        <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-dim);">
+          <span style="display: flex; align-items: center; gap: 0.35rem;">
+            <span style="width: 8px; height: 8px; border-radius: 2px; background: #10b981;"></span> + Added Money
+          </span>
+          <span style="display: flex; align-items: center; gap: 0.35rem;">
+            <span style="width: 8px; height: 8px; border-radius: 2px; background: #f43f5e;"></span> − Deducted Money
+          </span>
+        </div>
+      </section>
+
       <!-- Category Breakdown & SVG Donut Chart -->
       <section class="glass-card analytics-card">
         <div class="card-header">
           <div>
-            <h3 class="card-title">Category Spending</h3>
-            <p class="card-subtitle">Distribution of expenses by category</p>
+            <h3 class="card-title">Category Breakdown</h3>
+            <p id="category-chart-subtitle" class="card-subtitle">Distribution for selected view</p>
           </div>
-          <span id="category-count-badge" class="kpi-badge badge-neutral">0 categories</span>
+          <div class="card-header-actions">
+            <button type="button" id="open-cat-manager-btn" class="pill-btn secondary-pill btn-sm" title="Add, rename, or delete categories">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              <span>Manage</span>
+            </button>
+            <span id="category-count-badge" class="kpi-badge badge-neutral">0 categories</span>
+          </div>
         </div>
 
         <div class="category-analytics-content">
@@ -204,7 +308,7 @@
               <g id="donut-segments"></g>
             </svg>
             <div class="chart-center-content">
-              <span class="chart-center-caption">Spent</span>
+              <span id="chart-center-label" class="chart-center-caption">Spent</span>
               <span id="chart-center-amount" class="chart-center-amount">$0</span>
             </div>
           </div>
@@ -215,32 +319,105 @@
           </div>
         </div>
       </section>
-
-      <!-- Top Expenses Quick Highlights -->
-      <section class="glass-card top-expenses-card">
-        <div class="card-header">
-          <div>
-            <h3 class="card-title">Top Largest Expenses</h3>
-            <p class="card-subtitle">Highest single outflows this month</p>
-          </div>
-          <span id="top-expenses-count" class="kpi-badge badge-neutral">0 items</span>
-        </div>
-
-        <div id="top-expenses-list" class="top-expenses-list">
-          <!-- Dynamically populated via JS -->
-        </div>
-      </section>
     </div>
 
-    <!-- Expenses Activity & Records List -->
+    <!-- Spending Trend (Daily / Weekly) -->
+    <section class="glass-card trend-card" id="trend-section">
+      <div class="card-header trend-header">
+        <div>
+          <h3 class="card-title">Spending Trend</h3>
+          <p id="trend-subtitle" class="card-subtitle">Daily spending this month</p>
+        </div>
+        <div class="type-filter-group">
+          <button type="button" id="trend-daily-btn" class="type-filter-pill active">Daily</button>
+          <button type="button" id="trend-weekly-btn" class="type-filter-pill">Weekly</button>
+        </div>
+      </div>
+
+      <div class="trend-stats">
+        <div class="trend-stat"><span class="trend-stat-label">Average</span><span id="trend-avg" class="trend-stat-value">$0.00</span></div>
+        <div class="trend-stat"><span class="trend-stat-label">Highest</span><span id="trend-max" class="trend-stat-value">$0.00</span></div>
+        <div class="trend-stat"><span class="trend-stat-label">Trend</span><span id="trend-change" class="trend-stat-value">—</span></div>
+      </div>
+
+      <div class="trend-chart-wrap">
+        <svg id="trend-svg" class="trend-svg" viewBox="0 0 800 220" preserveAspectRatio="none" role="img" aria-label="Spending trend chart"></svg>
+        <div id="trend-tooltip" class="trend-tooltip hidden"></div>
+      </div>
+      <div id="trend-labels" class="trend-labels"></div>
+    </section>
+
+    <!-- Month-over-Month History & Year-to-Date Totals -->
+    <section class="glass-card mom-card" id="mom-history-section">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title">Year-to-Date & Monthly History</h3>
+          <p id="mom-subtitle" class="card-subtitle">Performance across 2026</p>
+        </div>
+        <span id="ytd-year-badge" class="kpi-badge badge-neutral">2026 YTD</span>
+      </div>
+
+      <!-- Year-to-Date Summary Cards -->
+      <div class="ytd-summary-grid">
+        <div class="ytd-stat-box">
+          <span class="ytd-stat-label">YTD Income</span>
+          <span id="ytd-income" class="ytd-stat-value text-safe">+$0.00</span>
+          <span id="ytd-income-sub" class="ytd-stat-sub">Across 0 active months</span>
+        </div>
+        <div class="ytd-stat-box">
+          <span class="ytd-stat-label">YTD Expenses</span>
+          <span id="ytd-expenses" class="ytd-stat-value text-danger">-$0.00</span>
+          <span id="ytd-expenses-sub" class="ytd-stat-sub">Monthly avg: $0.00</span>
+        </div>
+        <div class="ytd-stat-box">
+          <span class="ytd-stat-label">YTD Net Savings</span>
+          <span id="ytd-net-savings" class="ytd-stat-value text-safe">+$0.00</span>
+          <span id="ytd-savings-rate" class="ytd-stat-sub">0.0% YTD savings rate</span>
+        </div>
+        <div class="ytd-stat-box">
+          <span class="ytd-stat-label">MoM Expense Change</span>
+          <span id="mom-expense-diff" class="ytd-stat-value">—</span>
+          <span id="mom-comparison-sub" class="ytd-stat-sub">vs. previous month</span>
+        </div>
+      </div>
+
+      <!-- Month-over-Month History Table / Grid -->
+      <div class="mom-table-container">
+        <table class="mom-table">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Income</th>
+              <th>Expenses</th>
+              <th>Net Savings</th>
+              <th>Savings Rate</th>
+              <th>MoM Spent Δ</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="mom-history-tbody">
+            <!-- Populated via JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Expenses & Additions Activity & Records List -->
     <section class="glass-card records-section">
       <div class="records-header">
         <div>
-          <h3 class="card-title">Expense Records</h3>
-          <p id="records-subtitle" class="card-subtitle">Showing expenses for October 2026</p>
+          <h3 class="card-title">Activity Records</h3>
+          <p id="records-subtitle" class="card-subtitle">Showing records for October 2026</p>
         </div>
 
         <div class="records-filters">
+          <!-- Transaction Type Filter -->
+          <div class="type-filter-group">
+            <button type="button" id="filter-type-all-btn" class="type-filter-pill active">All</button>
+            <button type="button" id="filter-type-deduct-btn" class="type-filter-pill pill-deduct">− Deductions</button>
+            <button type="button" id="filter-type-add-btn" class="type-filter-pill pill-add">+ Additions</button>
+          </div>
+
           <!-- Category Filter Select -->
           <select id="category-filter-select" class="form-input filter-select">
             <option value="ALL">All Categories</option>
@@ -249,7 +426,7 @@
         </div>
       </div>
 
-      <!-- Expenses List Container -->
+      <!-- Expenses List Container (grouped by individual days of the week & date!) -->
       <div id="expenses-container" class="expenses-list">
         <!-- Rendered via JS -->
       </div>
@@ -262,14 +439,19 @@
             <path d="M7 15h0M2 9.5h20"></path>
           </svg>
         </div>
-        <h4 class="empty-state-title">No expenses logged yet</h4>
-        <p class="empty-state-desc">Enter an amount and select a category above to record your first expense!</p>
+        <h4 class="empty-state-title">No activity logged for this time</h4>
+        <p class="empty-state-desc">Select a day on the calendar, enter an amount, and click Add or Deduct to record your first entry!</p>
+        <div style="margin-top: 1rem;">
+          <button type="button" id="empty-load-sample-btn" class="pill-btn primary-pill btn-sm">
+            ✨ Load Sample Data
+          </button>
+        </div>
       </div>
     </section>
 
     <!-- Footer Note -->
     <footer class="app-footer">
-      <p>SpendFlow Monthly Expense Tracker • Built for GitHub Pages & Streamlit Cloud</p>
+      <p>SpendFlow Monthly Tracker with Daily Calendar • Built for GitHub Pages & Streamlit Cloud</p>
     </footer>
   </div>
 
@@ -277,6 +459,119 @@
   <div id="toast" class="toast hidden" role="status" aria-live="polite">
     <div id="toast-icon" class="toast-icon">✓</div>
     <span id="toast-msg">Action completed</span>
+  </div>
+
+  <!-- Category Management Modal -->
+  <div id="category-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="cat-modal-title">
+    <div class="modal-dialog glass-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon-badge">🏷️</div>
+          <div>
+            <h3 id="cat-modal-title" class="modal-title">Manage Categories</h3>
+            <p class="modal-subtitle">Add, rename, customize icons & colors, or delete categories</p>
+          </div>
+        </div>
+        <button type="button" id="close-category-modal-btn" class="modal-close-btn" aria-label="Close modal">✕</button>
+      </div>
+
+      <!-- Category Type Tabs (Expense vs Income) -->
+      <div class="modal-tabs">
+        <button type="button" id="cat-tab-expense" class="modal-tab active">
+          <span>− Expense Categories</span>
+          <span id="cat-tab-expense-count" class="tab-count-pill">11</span>
+        </button>
+        <button type="button" id="cat-tab-income" class="modal-tab">
+          <span>+ Income Categories</span>
+          <span id="cat-tab-income-count" class="tab-count-pill">7</span>
+        </button>
+      </div>
+
+      <!-- Add / Edit Category Form -->
+      <div class="category-form-card">
+        <div class="form-header-row">
+          <h4 id="cat-form-title" class="cat-form-title">Add New Category</h4>
+          <button type="button" id="cancel-cat-edit-btn" class="text-link-btn hidden">Cancel Edit</button>
+        </div>
+
+        <div class="cat-inputs-grid">
+          <!-- Emoji icon input -->
+          <div class="cat-input-group icon-group">
+            <label for="cat-icon-input" class="quick-label">Icon</label>
+            <input type="text" id="cat-icon-input" class="quick-input emoji-input" value="🏷️" maxlength="4" />
+          </div>
+
+          <!-- Name input -->
+          <div class="cat-input-group name-group">
+            <div class="label-with-action">
+              <label for="cat-name-input" class="quick-label">Category Name</label>
+              <span id="cat-name-counter" class="char-counter">0/32</span>
+            </div>
+            <input type="text" id="cat-name-input" class="quick-input" placeholder="e.g. Subscriptions, Pet Care" maxlength="32" required />
+          </div>
+
+          <!-- Color input -->
+          <div class="cat-input-group color-group">
+            <label for="cat-color-input" class="quick-label">Color</label>
+            <div class="color-picker-wrap">
+              <input type="color" id="cat-color-input" class="color-picker-input" value="#6366f1" />
+              <span id="cat-color-preview" class="color-preview-badge" style="background-color: #6366f1;"></span>
+            </div>
+          </div>
+
+          <!-- Action Button -->
+          <div class="cat-input-group btn-group">
+            <label class="quick-label">&nbsp;</label>
+            <button type="button" id="save-category-btn" class="pill-btn primary-pill cat-save-btn">
+              <span id="save-cat-btn-text">+ Add Category</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Emoji Palette Suggestions -->
+        <div class="quick-picker-row">
+          <span class="quick-picker-label">Emoji Suggestions:</span>
+          <div class="quick-emojis-list" id="quick-emojis-list">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </div>
+
+        <!-- Quick Color Palette Suggestions -->
+        <div class="quick-picker-row">
+          <span class="quick-picker-label">Color Swatches:</span>
+          <div class="quick-colors-list" id="quick-colors-list">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </div>
+
+        <!-- Form Inline Error Message -->
+        <div id="cat-form-error" class="error-banner hidden" style="margin-top: 0.75rem;">
+          <span id="cat-form-error-text">Please enter a valid category name.</span>
+        </div>
+      </div>
+
+      <!-- Existing Categories List -->
+      <div class="categories-list-section">
+        <div class="list-section-header">
+          <h4 class="cat-form-title">Existing Categories</h4>
+          <span id="cat-list-count" class="kpi-badge badge-neutral">11 categories</span>
+        </div>
+
+        <div id="category-items-container" class="category-items-container">
+          <!-- Dynamically populated via JS -->
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer">
+        <button type="button" id="reset-categories-btn" class="pill-btn secondary-pill btn-sm" title="Restore default categories">
+          ↺ Reset Defaults
+        </button>
+        <button type="button" id="done-category-modal-btn" class="pill-btn primary-pill btn-sm">
+          Done
+        </button>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>
