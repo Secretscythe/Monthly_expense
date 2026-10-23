@@ -11,8 +11,8 @@ A fast, clean, and modern monthly expense tracker built to work seamlessly on bo
 ## ✨ Features
 
 - **Secure Sign-in & Authentication**: User login portal required before accessing financial records. Supports multi-user accounts, RFC-compliant email validation, password visibility toggles, session persistence ("Keep me signed in"), and an instant 1-Click Demo Login (`demo@spendflow.app` / `password123`).
-- **Email Ownership & Occupied Check**: Real-time email validation checking whether an email account is already occupied/registered or available. Dispatches a 6-digit security code with a 10-minute expiry and instant auto-fill to verify authentic account ownership prior to registration.
-- **Two-Step Secure Password Reset**: Protects accounts from unauthorized resets by requiring a verified 6-digit security code sent to the registered email address before the new password fields unlock.
+- **Account Availability & Occupied Check**: Real-time email validation checking whether an email account is already registered/occupied or available, with live status pill feedback prior to account creation.
+- **Direct Password Reset**: Quick and secure password update allowing users to reset their account credentials directly without external email dispatching.
 - **Scroll & Viewport Lock**: Complete background scroll-bleed prevention when modals or auth screens are open, keeping the ambient gradients and background layout strictly fixed in place across browsers and Streamlit iframes.
 - **Admin Control Panel**: Full Administrative management module accessible to admin accounts (built-in default `admin@spendflow.app` / `admin123`). View all registered accounts, see transaction counts, reset user passwords, delete spam accounts, impersonate/switch accounts, or create new users directly.
 - **CSV Data Import & Export**: One-click export and smart CSV import with an interactive preview dialog, column auto-mapping (Date, Type, Category, Amount, Note), syntax validation, and choices to Append or Replace existing entries.
