@@ -10,8 +10,11 @@ A fast, clean, and modern monthly expense tracker built to work seamlessly on bo
 
 ## ✨ Features
 
-- **Secure Sign-in & Authentication**: User login portal required before accessing financial records. Supports multi-user accounts, password visibility toggles, session persistence ("Keep me signed in"), and an instant 1-Click Demo Login (`demo@spendflow.app` / `password123`).
-- **Multi-User Data Isolation**: Scoped personal data storage per user account with full profile avatar chip, active session indicator, account switching, and sign-out capabilities.
+- **Secure Sign-in & Authentication**: User login portal required before accessing financial records. Supports multi-user accounts, RFC-compliant email validation, password visibility toggles, session persistence ("Keep me signed in"), and an instant 1-Click Demo Login (`demo@spendflow.app` / `password123`).
+- **Admin Control Panel**: Full Administrative management module accessible to admin accounts (built-in default `admin@spendflow.app` / `admin123`). View all registered accounts, see transaction counts, reset user passwords, delete spam accounts, impersonate/switch accounts, or create new users directly.
+- **Forgot / Reset Password**: Dedicated "Reset Password" tab on the authentication portal allowing users to reset their account password directly.
+- **CSV Data Import & Export**: One-click export and smart CSV import with an interactive preview dialog, column auto-mapping (Date, Type, Category, Amount, Note), syntax validation, and choices to Append or Replace existing entries.
+- **Multi-User Data Isolation**: Scoped personal data storage per user account with full profile avatar chip, active session indicator, role chips (Admin vs Member), and privacy-preserving sign-out that thoroughly wipes DOM records and form inputs.
 - **Interactive Monthly Calendar**: Full calendar grid with individual day accounting, per-day income/expense badges, and single-click day isolation.
 - **Add & Deduct Tracking**: Dual-mode logging for income inflow (`+ Add`) and expense deductions (`− Deduct`) with 2-step verification for starting balance.
 - **Net Savings & Savings Rate**: Automatic computation of net savings (`Income − Expenses`) and savings percentage.
@@ -23,8 +26,7 @@ A fast, clean, and modern monthly expense tracker built to work seamlessly on bo
 - **Search & Filter**: Real-time filtering by transaction type (All, Deductions, Additions) and categories.
 - **Robust Input Validation & Real-Time UX**: Instant visual validation with glowing red borders, shake animations, live character counters (Note 100 char limit, Category 32 char limit), numeric range checks, and safe date verification.
 - **One-Click Sample Data & Clear**: Quickly load realistic demo financial data (bi-weekly salaries, rent, groceries, utilities, investments) across multiple months to explore charts and trends, or reset all logged entries to zero with safe two-step confirmation.
-- **Offline & Persistent**: Automatically preserves all entries, budgets, and custom categories in browser `localStorage`.
-- **CSV Data Export**: One-click download of the active month's financial records.
+- **Offline & Persistent**: Automatically preserves all entries, budgets, and custom categories in browser storage with fallback for sandboxed Streamlit iframes.
 - **Dual Deployment Ready**:
   - Run directly as a static web app on **GitHub Pages**.
   - Run as an interactive app on **Streamlit / Streamlit Cloud**.

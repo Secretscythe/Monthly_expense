@@ -144,13 +144,38 @@ const AUTH_SESSION_KEY = 'spendflow_auth_session';
 
 const DEFAULT_USERS = [
   {
+    id: 'user_admin',
+    name: 'Administrator',
+    email: 'admin@spendflow.app',
+    password: 'admin123',
+    role: 'admin',
+    createdAt: 1700000000000
+  },
+  {
     id: 'user_demo',
     name: 'Demo User',
     email: 'demo@spendflow.app',
     password: 'password123',
+    role: 'member',
     createdAt: 1700000000000
   }
 ];
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim());
+}
+
+function clearAuthInputs() {
+  const ids = [
+    'signin-email', 'signin-password',
+    'signup-name', 'signup-email', 'signup-password', 'signup-confirm-password',
+    'reset-email', 'reset-new-password', 'reset-confirm-password'
+  ];
+  ids.forEach(id => {
+    const el = $(id);
+    if (el) el.value = '';
+  });
+}
 
 function getUserStorageKey(suffix) {
   const userId = (state.currentUser && state.currentUser.id) ? state.currentUser.id : 'user_demo';
@@ -179,7 +204,13 @@ function migrateLegacyStorage() {
 function getRegisteredUsers() {
   try {
     const stored = JSON.parse(storage.getItem(AUTH_USERS_KEY));
-    if (Array.isArray(stored) && stored.length > 0) return stored;
+    if (Array.isArray(stored) && stored.length > 0) {
+      if (!stored.some(u => u.id === 'user_admin' || u.email === 'admin@spendflow.app')) {
+        stored.unshift(DEFAULT_USERS[0]);
+        storage.setItem(AUTH_USERS_KEY, JSON.stringify(stored));
+      }
+      return stored;
+    }
   } catch (e) {}
   storage.setItem(AUTH_USERS_KEY, JSON.stringify(DEFAULT_USERS));
   return [...DEFAULT_USERS];
@@ -235,6 +266,14 @@ function updateUserProfileUI(user) {
   if ($('dropdown-user-avatar')) $('dropdown-user-avatar').textContent = initials;
   if ($('dropdown-user-name')) $('dropdown-user-name').textContent = user.name;
   if ($('dropdown-user-email')) $('dropdown-user-email').textContent = user.email;
+
+  const isAdmin = user.role === 'admin';
+  if ($('user-admin-badge')) $('user-admin-badge').classList.toggle('hidden', !isAdmin);
+  if ($('open-admin-panel-btn')) $('open-admin-panel-btn').classList.toggle('hidden', !isAdmin);
+  if ($('dropdown-user-role')) {
+    $('dropdown-user-role').textContent = isAdmin ? 'Admin' : 'Member';
+    $('dropdown-user-role').className = 'user-role-badge ' + (isAdmin ? 'admin' : '');
+  }
 }
 
 function applyUserLogin(user, showGreeting = true) {
@@ -268,26 +307,33 @@ function showAuthModal(mode = 'signin') {
 
 function switchAuthTab(mode) {
   const isSignIn = mode === 'signin';
+  const isSignUp = mode === 'signup';
+  const isReset = mode === 'reset';
+
   if ($('auth-tab-signin')) $('auth-tab-signin').classList.toggle('active', isSignIn);
-  if ($('auth-tab-signup')) $('auth-tab-signup').classList.toggle('active', !isSignIn);
-  if ($('auth-tab-signin')) $('auth-tab-signin').setAttribute('aria-selected', isSignIn ? 'true' : 'false');
-  if ($('auth-tab-signup')) $('auth-tab-signup').setAttribute('aria-selected', !isSignIn ? 'true' : 'false');
+  if ($('auth-tab-signup')) $('auth-tab-signup').classList.toggle('active', isSignUp);
+  if ($('auth-tab-reset')) $('auth-tab-reset').classList.toggle('active', isReset);
 
   if ($('signin-form')) $('signin-form').classList.toggle('hidden', !isSignIn);
-  if ($('signup-form')) $('signup-form').classList.toggle('hidden', isSignIn);
+  if ($('signup-form')) $('signup-form').classList.toggle('hidden', !isSignUp);
+  if ($('reset-form')) $('reset-form').classList.toggle('hidden', !isReset);
 
   hideAuthErrors();
 
   if (isSignIn) {
     setTimeout(() => { if ($('signin-email')) $('signin-email').focus(); }, 60);
-  } else {
+  } else if (isSignUp) {
     setTimeout(() => { if ($('signup-name')) $('signup-name').focus(); }, 60);
+  } else if (isReset) {
+    setTimeout(() => { if ($('reset-email')) $('reset-email').focus(); }, 60);
   }
 }
 
 function hideAuthErrors() {
   if ($('signin-error-alert')) $('signin-error-alert').classList.add('hidden');
   if ($('signup-error-alert')) $('signup-error-alert').classList.add('hidden');
+  if ($('reset-error-alert')) $('reset-error-alert').classList.add('hidden');
+  if ($('reset-success-alert')) $('reset-success-alert').classList.add('hidden');
 }
 
 function showSignInError(msg) {
@@ -302,6 +348,15 @@ function showSignInError(msg) {
 function showSignUpError(msg) {
   const alert = $('signup-error-alert');
   const text = $('signup-error-msg');
+  if (alert && text) {
+    text.textContent = msg;
+    alert.classList.remove('hidden');
+  }
+}
+
+function showResetError(msg) {
+  const alert = $('reset-error-alert');
+  const text = $('reset-error-msg');
   if (alert && text) {
     text.textContent = msg;
     alert.classList.remove('hidden');
@@ -329,7 +384,8 @@ function handleSignIn(emailOrUsername, password, remember) {
   const user = users.find(u =>
     (u.email && u.email.toLowerCase() === lowerIdent) ||
     (u.name && u.name.toLowerCase() === lowerIdent) ||
-    (u.id === 'user_demo' && lowerIdent === 'demo')
+    (u.id === 'user_demo' && lowerIdent === 'demo') ||
+    (u.id === 'user_admin' && lowerIdent === 'admin')
   );
 
   if (!user) {
@@ -344,6 +400,7 @@ function handleSignIn(emailOrUsername, password, remember) {
     return;
   }
 
+  clearAuthInputs();
   setActiveSession(user, remember);
   applyUserLogin(user, true);
 }
@@ -361,7 +418,12 @@ function handleSignUp(name, emailOrUsername, password, confirmPassword, preloadS
     return;
   }
   if (!ident) {
-    showSignUpError('Please enter a valid email or username.');
+    showSignUpError('Please enter a valid email address.');
+    if ($('signup-email')) $('signup-email').focus();
+    return;
+  }
+  if (!isValidEmail(ident)) {
+    showSignUpError('Please enter a valid email address format (e.g. name@example.com).');
     if ($('signup-email')) $('signup-email').focus();
     return;
   }
@@ -384,7 +446,7 @@ function handleSignUp(name, emailOrUsername, password, confirmPassword, preloadS
   );
 
   if (exists) {
-    showSignUpError('An account with this email or username already exists.');
+    showSignUpError('An account with this email address already exists. Please sign in or reset password.');
     if ($('signup-email')) $('signup-email').focus();
     return;
   }
@@ -394,6 +456,7 @@ function handleSignUp(name, emailOrUsername, password, confirmPassword, preloadS
     name: n,
     email: lowerIdent,
     password: pwd,
+    role: 'member',
     createdAt: Date.now()
   };
 
@@ -429,18 +492,104 @@ function handleSignUp(name, emailOrUsername, password, confirmPassword, preloadS
     storage.setItem(`spendflow_${newUser.id}_base_balance`, '2500');
   }
 
+  clearAuthInputs();
   setActiveSession(newUser, true);
   applyUserLogin(newUser, false);
   showToast(`Account created! Welcome, ${newUser.name} 🎉`);
+}
+
+function handleResetPassword(emailOrUsername, newPassword, confirmPassword) {
+  hideAuthErrors();
+  const ident = (emailOrUsername || '').trim();
+  const pwd = (newPassword || '').trim();
+  const cpwd = (confirmPassword || '').trim();
+
+  if (!ident) {
+    showResetError('Please enter your registered email or username.');
+    if ($('reset-email')) $('reset-email').focus();
+    return;
+  }
+  if (!pwd || pwd.length < 4) {
+    showResetError('New password must be at least 4 characters long.');
+    if ($('reset-new-password')) $('reset-new-password').focus();
+    return;
+  }
+  if (pwd !== cpwd) {
+    showResetError('Passwords do not match. Please verify.');
+    if ($('reset-confirm-password')) $('reset-confirm-password').focus();
+    return;
+  }
+
+  const users = getRegisteredUsers();
+  const lowerIdent = ident.toLowerCase();
+  const user = users.find(u =>
+    (u.email && u.email.toLowerCase() === lowerIdent) ||
+    (u.name && u.name.toLowerCase() === lowerIdent) ||
+    (u.id === 'user_demo' && lowerIdent === 'demo') ||
+    (u.id === 'user_admin' && lowerIdent === 'admin')
+  );
+
+  if (!user) {
+    showResetError('No account found with this email or username.');
+    if ($('reset-email')) $('reset-email').focus();
+    return;
+  }
+
+  user.password = pwd;
+  saveRegisteredUsers(users);
+
+  if ($('reset-success-alert')) $('reset-success-alert').classList.remove('hidden');
+
+  setTimeout(() => {
+    clearAuthInputs();
+    showToast(`Password updated! Logging you in as ${user.name}... 🔑`);
+    setActiveSession(user, true);
+    applyUserLogin(user, true);
+  }, 800);
 }
 
 function handleSignOut() {
   clearActiveSession();
   state.currentUser = null;
   state.entries = [];
+  state.baseBalance = 0;
+  clearAuthInputs();
   closeUserDropdown();
+  renderAll(); // Clears all background DOM elements & tables so previous user data is completely erased
   showAuthModal('signin');
   showToast('Signed out successfully. 👋');
+}
+
+function handleDeleteMyAccount() {
+  if (!state.currentUser) return;
+  const curUser = state.currentUser;
+  if (curUser.id === 'user_admin') {
+    showToast('The primary Admin account cannot be deleted.');
+    return;
+  }
+  const confirmed = window.confirm(
+    `Are you sure you want to permanently delete account "${curUser.name}" (${curUser.email})?\n\nThis will permanently erase your login and all recorded transactions from this browser.`
+  );
+  if (!confirmed) return;
+
+  const users = getRegisteredUsers().filter(u => u.id !== curUser.id);
+  saveRegisteredUsers(users);
+
+  // Purge scoped data
+  storage.removeItem(`spendflow_${curUser.id}_clean_expenses`);
+  storage.removeItem(`spendflow_${curUser.id}_base_balance`);
+  storage.removeItem(`spendflow_${curUser.id}_expense_categories`);
+  storage.removeItem(`spendflow_${curUser.id}_income_categories`);
+
+  clearActiveSession();
+  state.currentUser = null;
+  state.entries = [];
+  state.baseBalance = 0;
+  clearAuthInputs();
+  closeUserDropdown();
+  renderAll();
+  showAuthModal('signin');
+  showToast('Account permanently deleted. 🧹');
 }
 
 function toggleUserDropdown() {
@@ -2161,6 +2310,14 @@ function initEventListeners() {
 
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
+      if ($('admin-modal') && !$('admin-modal').classList.contains('hidden')) {
+        closeAdminModal();
+        return;
+      }
+      if ($('csv-import-modal') && !$('csv-import-modal').classList.contains('hidden')) {
+        closeCSVModal();
+        return;
+      }
       if ($('auth-modal') && !$('auth-modal').classList.contains('hidden') && !state.currentUser) {
         // Esc does not dismiss auth when not signed in
         return;
@@ -2176,11 +2333,375 @@ function initEventListeners() {
   });
 }
 
+// ========================================================
+// CSV IMPORT ENGINE
+// ========================================================
+
+let pendingCSVEntries = [];
+let pendingCSVFileName = '';
+
+function initCSVImport() {
+  if (!$('import-csv-btn') || !$('import-csv-file')) return;
+
+  $('import-csv-btn').addEventListener('click', () => {
+    $('import-csv-file').value = '';
+    $('import-csv-file').click();
+  });
+
+  $('import-csv-file').addEventListener('change', e => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    pendingCSVFileName = file.name;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      parseAndPreviewCSV(evt.target.result, file.name);
+    };
+    reader.readAsText(file);
+  });
+
+  if ($('close-csv-modal-btn')) {
+    $('close-csv-modal-btn').addEventListener('click', closeCSVModal);
+  }
+  if ($('cancel-csv-import-btn')) {
+    $('cancel-csv-import-btn').addEventListener('click', closeCSVModal);
+  }
+  if ($('confirm-csv-import-btn')) {
+    $('confirm-csv-import-btn').addEventListener('click', applyCSVImport);
+  }
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"' || c === "'") {
+      inQuotes = !inQuotes;
+    } else if (c === ',' && !inQuotes) {
+      result.push(cur.trim());
+      cur = '';
+    } else {
+      cur += c;
+    }
+  }
+  result.push(cur.trim());
+  return result.map(s => s.replace(/^["']|["']$/g, '').trim());
+}
+
+function parseAndPreviewCSV(text, filename) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (lines.length < 2) {
+    showToast('The selected CSV file appears to be empty.');
+    return;
+  }
+
+  const header = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+  const dateIdx = header.findIndex(h => h.includes('date'));
+  const typeIdx = header.findIndex(h => h.includes('type'));
+  const catIdx = header.findIndex(h => h.includes('cat'));
+  const amtIdx = header.findIndex(h => h.includes('amount') || h.includes('val') || h.includes('cost') || h.includes('price'));
+  const noteIdx = header.findIndex(h => h.includes('note') || h.includes('desc') || h.includes('memo') || h.includes('title'));
+
+  const validEntries = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCSVLine(lines[i]);
+    if (cols.length < 2) continue;
+
+    const rawDate = dateIdx !== -1 ? cols[dateIdx] : cols[0];
+    const rawType = typeIdx !== -1 ? cols[typeIdx] : '';
+    const rawCat = catIdx !== -1 ? cols[catIdx] : 'Other';
+    const rawAmt = amtIdx !== -1 ? cols[amtIdx] : cols[cols.length - 1];
+    const rawNote = noteIdx !== -1 ? cols[noteIdx] : '';
+
+    const cleanAmt = parseFloat(String(rawAmt).replace(/[^0-9.-]/g, ''));
+    if (isNaN(cleanAmt) || cleanAmt <= 0) continue;
+
+    // Normalizing type
+    let finalType = 'deduct';
+    const lowerType = String(rawType).toLowerCase();
+    if (lowerType.includes('add') || lowerType.includes('income') || lowerType.includes('credit') || lowerType.includes('deposit') || String(rawAmt).startsWith('+')) {
+      finalType = 'add';
+    }
+
+    // Normalizing date to YYYY-MM-DD
+    let dateStr = defaultLogDate();
+    if (rawDate) {
+      const parsed = new Date(rawDate);
+      if (!isNaN(parsed.getTime())) {
+        dateStr = toDateKey(parsed);
+      } else if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+        dateStr = rawDate;
+      }
+    }
+
+    validEntries.push({
+      id: `imp-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+      date: dateStr,
+      type: finalType,
+      category: rawCat || (finalType === 'add' ? 'Salary' : 'Miscellaneous'),
+      amount: cleanAmt,
+      note: rawNote || '',
+      createdAt: Date.now() - (i * 1000)
+    });
+  }
+
+  if (validEntries.length === 0) {
+    showToast('Could not find valid financial rows in this CSV.');
+    return;
+  }
+
+  pendingCSVEntries = validEntries;
+  pendingCSVFileName = filename;
+
+  if ($('csv-file-name')) $('csv-file-name').textContent = filename;
+  if ($('csv-valid-count')) $('csv-valid-count').textContent = validEntries.length + ' rows';
+
+  const totalInflow = validEntries.filter(e => e.type === 'add').reduce((acc, e) => acc + e.amount, 0);
+  const totalDeduct = validEntries.filter(e => e.type === 'deduct').reduce((acc, e) => acc + e.amount, 0);
+
+  if ($('csv-total-inflow')) $('csv-total-inflow').textContent = '+' + formatCurrency(totalInflow);
+  if ($('csv-total-deductions')) $('csv-total-deductions').textContent = '-' + formatCurrency(totalDeduct);
+
+  const previewRows = validEntries.slice(0, 5);
+  const tbody = $('csv-preview-tbody');
+  if (tbody) {
+    tbody.innerHTML = previewRows.map(e => `
+      <tr>
+        <td>${escapeHTML(e.date)}</td>
+        <td><span class="badge ${e.type === 'add' ? 'badge-inflow' : 'badge-deduct'}">${e.type === 'add' ? '+Add' : '-Deduct'}</span></td>
+        <td>${escapeHTML(e.category)}</td>
+        <td style="font-weight: 700; color: ${e.type === 'add' ? 'var(--accent-safe)' : 'var(--accent-danger)'}">${e.type === 'add' ? '+' : '-'}${formatCurrency(e.amount)}</td>
+        <td class="text-ellipsis">${escapeHTML(e.note || '—')}</td>
+      </tr>
+    `).join('');
+  }
+
+  if ($('csv-import-modal')) $('csv-import-modal').classList.remove('hidden');
+}
+
+function closeCSVModal() {
+  if ($('csv-import-modal')) $('csv-import-modal').classList.add('hidden');
+  pendingCSVEntries = [];
+}
+
+function applyCSVImport() {
+  if (pendingCSVEntries.length === 0) return;
+  const modeEl = document.querySelector('input[name="csv-import-mode"]:checked');
+  const mode = modeEl ? modeEl.value : 'append';
+
+  if (mode === 'replace') {
+    state.entries = [...pendingCSVEntries];
+  } else {
+    state.entries = [...state.entries, ...pendingCSVEntries];
+  }
+
+  saveEntries();
+  state.selectedDay = null;
+  populateCategoryFilter();
+  renderAll();
+  const count = pendingCSVEntries.length;
+  closeCSVModal();
+  showToast(`Successfully imported ${count} records! 📥`);
+}
+
+// ========================================================
+// ADMIN CONTROL PANEL
+// ========================================================
+
+function openAdminPanel() {
+  if (!state.currentUser || state.currentUser.role !== 'admin') {
+    showToast('Admin privilege required.');
+    return;
+  }
+  closeUserDropdown();
+  renderAdminUsersTable();
+  if ($('admin-modal')) $('admin-modal').classList.remove('hidden');
+}
+
+function closeAdminModal() {
+  if ($('admin-modal')) $('admin-modal').classList.add('hidden');
+}
+
+function renderAdminUsersTable() {
+  const users = getRegisteredUsers();
+  const members = users.filter(u => u.role !== 'admin');
+  const admins = users.filter(u => u.role === 'admin');
+
+  let totalTx = 0;
+  users.forEach(u => {
+    try {
+      const stored = JSON.parse(storage.getItem(`spendflow_${u.id}_clean_expenses`) || '[]');
+      totalTx += stored.length;
+    } catch (e) {}
+  });
+
+  if ($('admin-stat-total-users')) $('admin-stat-total-users').textContent = users.length;
+  if ($('admin-stat-members')) $('admin-stat-members').textContent = members.length;
+  if ($('admin-stat-admins')) $('admin-stat-admins').textContent = admins.length;
+  if ($('admin-stat-transactions')) $('admin-stat-transactions').textContent = totalTx;
+  if ($('admin-user-count-chip')) $('admin-user-count-chip').textContent = `${users.length} accounts`;
+
+  const tbody = $('admin-users-tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = users.map(u => {
+    let txCount = 0;
+    try {
+      const tx = JSON.parse(storage.getItem(`spendflow_${u.id}_clean_expenses`) || '[]');
+      txCount = tx.length;
+    } catch (e) {}
+    const isCur = state.currentUser && state.currentUser.id === u.id;
+    const isPrimaryAdmin = u.id === 'user_admin';
+    const initials = getUserInitials(u.name);
+    const joined = new Date(u.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    return `
+      <tr>
+        <td>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div class="user-avatar" style="width: 26px; height: 26px; font-size: 0.68rem;">${initials}</div>
+            <div>
+              <strong>${escapeHTML(u.name)}</strong>
+              ${isCur ? ' <span style="font-size: 0.68rem; color: #a5b4fc;">(You)</span>' : ''}
+            </div>
+          </div>
+        </td>
+        <td><code>${escapeHTML(u.email)}</code></td>
+        <td>
+          <span class="user-role-badge ${u.role === 'admin' ? 'admin' : ''}">${u.role === 'admin' ? '👑 Admin' : 'Member'}</span>
+        </td>
+        <td>${joined}</td>
+        <td><strong>${txCount}</strong></td>
+        <td>
+          <div class="admin-actions-cell">
+            <button type="button" class="admin-action-btn admin-reset-pw-btn" data-user-id="${u.id}" data-user-name="${escapeHTML(u.name)}" title="Set new password">
+              🔑 Reset Pw
+            </button>
+            ${!isCur ? `
+              <button type="button" class="admin-action-btn admin-switch-btn" data-user-id="${u.id}" title="Inspect as this user">
+                👁️ Switch
+              </button>
+            ` : ''}
+            ${!isPrimaryAdmin && !isCur ? `
+              <button type="button" class="admin-action-btn danger admin-del-user-btn" data-user-id="${u.id}" data-user-name="${escapeHTML(u.name)}" title="Permanently delete user">
+                🗑️ Delete
+              </button>
+            ` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function handleAdminCreateUser(e) {
+  e.preventDefault();
+  const name = ($('admin-new-name').value || '').trim();
+  const email = ($('admin-new-email').value || '').trim().toLowerCase();
+  const pwd = ($('admin-new-password').value || '').trim();
+  const role = $('admin-new-role').value || 'member';
+  const errBox = $('admin-add-user-error');
+  const errText = $('admin-add-user-error-text');
+
+  if (!name || !email || !pwd) {
+    if (errText) errText.textContent = 'Please fill out all fields.';
+    if (errBox) errBox.classList.remove('hidden');
+    return;
+  }
+  if (!isValidEmail(email)) {
+    if (errText) errText.textContent = 'Please enter a valid email address.';
+    if (errBox) errBox.classList.remove('hidden');
+    return;
+  }
+  if (pwd.length < 4) {
+    if (errText) errText.textContent = 'Password must be at least 4 characters.';
+    if (errBox) errBox.classList.remove('hidden');
+    return;
+  }
+
+  const users = getRegisteredUsers();
+  if (users.some(u => u.email.toLowerCase() === email)) {
+    if (errText) errText.textContent = 'A user with this email already exists.';
+    if (errBox) errBox.classList.remove('hidden');
+    return;
+  }
+
+  const newUser = {
+    id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    name,
+    email,
+    password: pwd,
+    role,
+    createdAt: Date.now()
+  };
+
+  users.push(newUser);
+  saveRegisteredUsers(users);
+  storage.setItem(`spendflow_${newUser.id}_clean_expenses`, JSON.stringify([]));
+  storage.setItem(`spendflow_${newUser.id}_base_balance`, '2500');
+
+  $('admin-new-name').value = '';
+  $('admin-new-email').value = '';
+  $('admin-new-password').value = '';
+  if (errBox) errBox.classList.add('hidden');
+
+  renderAdminUsersTable();
+  showToast(`Created account for ${name}! 👤`);
+}
+
+function handleAdminResetUserPassword(userId, userName) {
+  const newPw = window.prompt(`Enter new password for ${userName} (min. 4 characters):`);
+  if (!newPw) return;
+  if (newPw.trim().length < 4) {
+    showToast('Password must be at least 4 characters.');
+    return;
+  }
+  const users = getRegisteredUsers();
+  const user = users.find(u => u.id === userId);
+  if (!user) {
+    showToast('User not found.');
+    return;
+  }
+  user.password = newPw.trim();
+  saveRegisteredUsers(users);
+  showToast(`Password updated for ${userName}! 🔑`);
+}
+
+function handleAdminDeleteUser(userId, userName) {
+  const confirmed = window.confirm(`Permanently delete user "${userName}"?\n\nThis will remove their account and all their recorded transactions from the system.`);
+  if (!confirmed) return;
+
+  const users = getRegisteredUsers().filter(u => u.id !== userId);
+  saveRegisteredUsers(users);
+
+  storage.removeItem(`spendflow_${userId}_clean_expenses`);
+  storage.removeItem(`spendflow_${userId}_base_balance`);
+  storage.removeItem(`spendflow_${userId}_expense_categories`);
+  storage.removeItem(`spendflow_${userId}_income_categories`);
+
+  renderAdminUsersTable();
+  showToast(`User ${userName} deleted. 🗑️`);
+}
+
+function handleAdminSwitchUser(userId) {
+  const users = getRegisteredUsers();
+  const user = users.find(u => u.id === userId);
+  if (!user) return;
+  closeAdminModal();
+  setActiveSession(user, true);
+  applyUserLogin(user, true);
+  showToast(`Switched view to ${user.name}! 👁️`);
+}
+
 function initAuthEvents() {
   if ($('auth-tab-signin')) $('auth-tab-signin').addEventListener('click', () => switchAuthTab('signin'));
   if ($('auth-tab-signup')) $('auth-tab-signup').addEventListener('click', () => switchAuthTab('signup'));
+  if ($('auth-tab-reset')) $('auth-tab-reset').addEventListener('click', () => switchAuthTab('reset'));
   if ($('switch-to-signup-btn')) $('switch-to-signup-btn').addEventListener('click', () => switchAuthTab('signup'));
   if ($('switch-to-signin-btn')) $('switch-to-signin-btn').addEventListener('click', () => switchAuthTab('signin'));
+  if ($('switch-to-signin-from-reset')) $('switch-to-signin-from-reset').addEventListener('click', () => switchAuthTab('signin'));
+  if ($('forgot-pw-link')) $('forgot-pw-link').addEventListener('click', () => switchAuthTab('reset'));
 
   if ($('quick-demo-login-btn')) {
     $('quick-demo-login-btn').addEventListener('click', () => {
@@ -2190,11 +2711,11 @@ function initAuthEvents() {
     });
   }
 
-  if ($('auth-fill-demo-link')) {
-    $('auth-fill-demo-link').addEventListener('click', () => {
-      if ($('signin-email')) $('signin-email').value = 'demo@spendflow.app';
-      if ($('signin-password')) $('signin-password').value = 'password123';
-      if ($('signin-password')) $('signin-password').focus();
+  if ($('quick-admin-login-btn')) {
+    $('quick-admin-login-btn').addEventListener('click', () => {
+      if ($('signin-email')) $('signin-email').value = 'admin@spendflow.app';
+      if ($('signin-password')) $('signin-password').value = 'admin123';
+      handleSignIn('admin@spendflow.app', 'admin123', true);
     });
   }
 
@@ -2220,14 +2741,68 @@ function initAuthEvents() {
     });
   }
 
+  if ($('reset-form')) {
+    $('reset-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const email = $('reset-email') ? $('reset-email').value : '';
+      const newPw = $('reset-new-password') ? $('reset-new-password').value : '';
+      const confirmPw = $('reset-confirm-password') ? $('reset-confirm-password').value : '';
+      handleResetPassword(email, newPw, confirmPw);
+    });
+  }
+
   setupPasswordToggle('signin-toggle-pw', 'signin-password');
   setupPasswordToggle('signup-toggle-pw', 'signup-password');
   setupPasswordToggle('signup-toggle-confirm-pw', 'signup-confirm-password');
+  setupPasswordToggle('reset-toggle-pw', 'reset-new-password');
+  setupPasswordToggle('reset-toggle-confirm-pw', 'reset-confirm-password');
 
   if ($('user-profile-btn')) {
     $('user-profile-btn').addEventListener('click', e => {
       e.stopPropagation();
       toggleUserDropdown();
+    });
+  }
+
+  if ($('open-admin-panel-btn')) {
+    $('open-admin-panel-btn').addEventListener('click', () => {
+      openAdminPanel();
+    });
+  }
+
+  if ($('close-admin-modal-btn')) {
+    $('close-admin-modal-btn').addEventListener('click', closeAdminModal);
+  }
+  if ($('done-admin-modal-btn')) {
+    $('done-admin-modal-btn').addEventListener('click', closeAdminModal);
+  }
+
+  if ($('admin-add-user-form')) {
+    $('admin-add-user-form').addEventListener('submit', handleAdminCreateUser);
+  }
+
+  if ($('admin-users-tbody')) {
+    $('admin-users-tbody').addEventListener('click', e => {
+      const resetBtn = e.target.closest('.admin-reset-pw-btn');
+      if (resetBtn && resetBtn.dataset.userId) {
+        handleAdminResetUserPassword(resetBtn.dataset.userId, resetBtn.dataset.userName);
+        return;
+      }
+      const delBtn = e.target.closest('.admin-del-user-btn');
+      if (delBtn && delBtn.dataset.userId) {
+        handleAdminDeleteUser(delBtn.dataset.userId, delBtn.dataset.userName);
+        return;
+      }
+      const switchBtn = e.target.closest('.admin-switch-btn');
+      if (switchBtn && switchBtn.dataset.userId) {
+        handleAdminSwitchUser(switchBtn.dataset.userId);
+      }
+    });
+  }
+
+  if ($('delete-my-account-btn')) {
+    $('delete-my-account-btn').addEventListener('click', () => {
+      handleDeleteMyAccount();
     });
   }
 
@@ -2250,6 +2825,8 @@ function initAuthEvents() {
       closeUserDropdown();
     }
   });
+
+  initCSVImport();
 }
 
 function initApp() {

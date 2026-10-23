@@ -64,6 +64,11 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           <span>Export CSV</span>
         </button>
+        <button type="button" id="import-csv-btn" class="pill-btn secondary-pill" title="Import records from CSV file">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span>Import CSV</span>
+        </button>
+        <input type="file" id="import-csv-file" accept=".csv,text/csv" class="hidden" />
 
         <!-- User Profile Pill & Dropdown -->
         <div class="user-profile-wrapper" id="user-profile-wrapper">
@@ -71,6 +76,7 @@
             <div id="user-avatar" class="user-avatar">DU</div>
             <div class="user-profile-meta">
               <span id="user-display-name" class="user-display-name">Demo User</span>
+              <span id="user-admin-badge" class="admin-chip hidden">ADMIN</span>
               <span class="user-status-dot" title="Active session"></span>
             </div>
             <svg class="profile-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -81,12 +87,19 @@
             <div class="user-dropdown-header">
               <div id="dropdown-user-avatar" class="user-avatar lg">DU</div>
               <div class="user-dropdown-info">
-                <div id="dropdown-user-name" class="dropdown-user-name">Demo User</div>
+                <div class="dropdown-name-row">
+                  <div id="dropdown-user-name" class="dropdown-user-name">Demo User</div>
+                  <span id="dropdown-user-role" class="user-role-badge">Member</span>
+                </div>
                 <div id="dropdown-user-email" class="dropdown-user-email">demo@spendflow.app</div>
               </div>
             </div>
             <div class="user-dropdown-divider"></div>
             <div class="user-dropdown-items">
+              <button type="button" id="open-admin-panel-btn" class="user-dropdown-action admin-action hidden" role="menuitem">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+                <span>Admin Control Panel</span>
+              </button>
               <button type="button" id="switch-account-btn" class="user-dropdown-action" role="menuitem">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
                 <span>Switch Account</span>
@@ -94,6 +107,10 @@
               <button type="button" id="logout-btn" class="user-dropdown-action logout-action" role="menuitem">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                 <span>Sign Out</span>
+              </button>
+              <button type="button" id="delete-my-account-btn" class="user-dropdown-action text-danger" role="menuitem">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                <span>Delete My Account</span>
               </button>
             </div>
           </div>
@@ -625,24 +642,31 @@
         <p id="auth-subtitle" class="auth-subtitle">Sign in to access your personal finances and budget records</p>
       </div>
 
-      <!-- Mode Tabs: Sign In / Sign Up -->
+      <!-- Mode Tabs: Sign In / Sign Up / Reset Password -->
       <div class="auth-tabs" role="tablist">
         <button type="button" id="auth-tab-signin" class="auth-tab active" role="tab" aria-selected="true">Sign In</button>
         <button type="button" id="auth-tab-signup" class="auth-tab" role="tab" aria-selected="false">Create Account</button>
+        <button type="button" id="auth-tab-reset" class="auth-tab" role="tab" aria-selected="false">Reset Password</button>
       </div>
 
       <!-- Quick Demo Access Banner -->
       <div class="demo-account-banner">
         <div class="demo-badge">Quick Demo Access</div>
         <div class="demo-text">
-          <span>Testing? Try preloaded demo account:</span>
+          <span>Testing? Try preloaded demo or admin accounts:</span>
           <div class="demo-credentials">
-            <code>demo@spendflow.app</code> • <code>password123</code>
+            <code>demo@spendflow.app</code> • <code>password123</code> (User)<br/>
+            <code>admin@spendflow.app</code> • <code>admin123</code> (Admin)
           </div>
         </div>
-        <button type="button" id="quick-demo-login-btn" class="pill-btn primary-pill btn-sm">
-          ⚡ 1-Click Demo Login
-        </button>
+        <div class="demo-btn-row">
+          <button type="button" id="quick-demo-login-btn" class="pill-btn primary-pill btn-sm">
+            ⚡ 1-Click Demo Login
+          </button>
+          <button type="button" id="quick-admin-login-btn" class="pill-btn secondary-pill btn-sm">
+            👑 1-Click Admin Login
+          </button>
+        </div>
       </div>
 
       <!-- SIGN IN FORM -->
@@ -677,7 +701,7 @@
             <input type="checkbox" id="signin-remember" checked />
             <span>Keep me signed in</span>
           </label>
-          <button type="button" id="auth-fill-demo-link" class="auth-text-link">Fill demo info</button>
+          <button type="button" id="forgot-pw-link" class="auth-text-link">Forgot password?</button>
         </div>
 
         <button type="submit" id="signin-submit-btn" class="pill-btn primary-pill auth-submit-btn">
@@ -707,10 +731,10 @@
         </div>
 
         <div class="form-group">
-          <label for="signup-email" class="input-label">Email or Username</label>
+          <label for="signup-email" class="input-label">Email Address <span class="input-sublabel">(e.g. user@domain.com)</span></label>
           <div class="auth-input-wrap with-icon">
             <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-            <input type="text" id="signup-email" class="quick-input" placeholder="e.g. alex@example.com" autocomplete="username" required />
+            <input type="email" id="signup-email" class="quick-input" placeholder="alex@example.com" autocomplete="email" required />
           </div>
         </div>
 
@@ -755,6 +779,222 @@
           <button type="button" id="switch-to-signin-btn" class="auth-text-link accent">Sign In</button>
         </div>
       </form>
+
+      <!-- RESET PASSWORD FORM -->
+      <form id="reset-form" class="auth-form hidden" novalidate>
+        <div id="reset-error-alert" class="auth-alert error hidden" role="alert">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          <span id="reset-error-msg"></span>
+        </div>
+        <div id="reset-success-alert" class="auth-alert success hidden" role="alert">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span id="reset-success-msg">Password updated successfully!</span>
+        </div>
+
+        <div class="form-group">
+          <label for="reset-email" class="input-label">Registered Email or Username</label>
+          <div class="auth-input-wrap with-icon">
+            <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            <input type="text" id="reset-email" class="quick-input" placeholder="e.g. demo@spendflow.app" autocomplete="username" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reset-new-password" class="input-label">New Password <span class="input-sublabel">(at least 4 characters)</span></label>
+          <div class="auth-input-wrap with-icon with-end-icon">
+            <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <input type="password" id="reset-new-password" class="quick-input" placeholder="Choose new password" autocomplete="new-password" required />
+            <button type="button" id="reset-toggle-pw" class="pw-toggle-btn" aria-label="Toggle password visibility">
+              <svg class="eye-icon eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              <svg class="eye-icon eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reset-confirm-password" class="input-label">Confirm New Password</label>
+          <div class="auth-input-wrap with-icon with-end-icon">
+            <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <input type="password" id="reset-confirm-password" class="quick-input" placeholder="Repeat new password" autocomplete="new-password" required />
+            <button type="button" id="reset-toggle-confirm-pw" class="pw-toggle-btn" aria-label="Toggle password visibility">
+              <svg class="eye-icon eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              <svg class="eye-icon eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="reset-submit-btn" class="pill-btn primary-pill auth-submit-btn">
+          <span>Reset Password & Sign In</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+
+        <div class="auth-switch-prompt">
+          <span>Remember your credentials?</span>
+          <button type="button" id="switch-to-signin-from-reset" class="auth-text-link accent">Back to Sign In</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ADMIN CONTROL PANEL MODAL -->
+  <div id="admin-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title">
+    <div class="modal-dialog glass-card admin-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon-badge admin-badge-icon">👑</div>
+          <div>
+            <h3 id="admin-modal-title" class="modal-title">Admin Control Panel</h3>
+            <p class="modal-subtitle">Manage registered users, reset passwords, and oversee system analytics</p>
+          </div>
+        </div>
+        <button type="button" id="close-admin-modal-btn" class="modal-close-btn" aria-label="Close admin modal">✕</button>
+      </div>
+
+      <!-- Admin Stat KPI Counters -->
+      <div class="admin-kpi-row">
+        <div class="admin-kpi-card">
+          <span class="admin-kpi-label">Total Users</span>
+          <span id="admin-stat-total-users" class="admin-kpi-num">0</span>
+        </div>
+        <div class="admin-kpi-card">
+          <span class="admin-kpi-label">Active Members</span>
+          <span id="admin-stat-members" class="admin-kpi-num">0</span>
+        </div>
+        <div class="admin-kpi-card">
+          <span class="admin-kpi-label">Admins</span>
+          <span id="admin-stat-admins" class="admin-kpi-num">0</span>
+        </div>
+        <div class="admin-kpi-card">
+          <span class="admin-kpi-label">Total Logged Records</span>
+          <span id="admin-stat-transactions" class="admin-kpi-num">0</span>
+        </div>
+      </div>
+
+      <!-- Quick Add User Section -->
+      <div class="admin-add-user-box">
+        <h4 class="admin-subheading">Create New User Account</h4>
+        <form id="admin-add-user-form" class="admin-inline-form" novalidate>
+          <input type="text" id="admin-new-name" class="quick-input" placeholder="Full Name" required />
+          <input type="email" id="admin-new-email" class="quick-input" placeholder="Email Address" required />
+          <input type="password" id="admin-new-password" class="quick-input" placeholder="Password (min 4)" required />
+          <select id="admin-new-role" class="quick-input custom-select">
+            <option value="member">Role: Member</option>
+            <option value="admin">Role: Admin</option>
+          </select>
+          <button type="submit" id="admin-create-user-btn" class="pill-btn primary-pill btn-sm">Create Account</button>
+        </form>
+        <div id="admin-add-user-error" class="error-banner hidden" style="margin-top: 0.5rem;">
+          <span id="admin-add-user-error-text"></span>
+        </div>
+      </div>
+
+      <!-- User Directory Table -->
+      <div class="admin-users-table-wrap">
+        <div class="list-section-header">
+          <h4 class="admin-subheading">Registered User Directory</h4>
+          <span id="admin-user-count-chip" class="kpi-badge badge-neutral">0 accounts</span>
+        </div>
+        <div class="admin-table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Joined</th>
+                <th>Records</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users-tbody">
+              <!-- Dynamically populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer">
+        <span class="admin-footer-tip">Admin Mode Active • Modifications update system storage immediately.</span>
+        <button type="button" id="done-admin-modal-btn" class="pill-btn primary-pill btn-sm">Close Panel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CSV IMPORT MODAL -->
+  <div id="csv-import-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="csv-modal-title">
+    <div class="modal-dialog glass-card csv-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon-badge">📥</div>
+          <div>
+            <h3 id="csv-modal-title" class="modal-title">Import Transactions CSV</h3>
+            <p class="modal-subtitle">Preview and sync financial records with your personal tracker</p>
+          </div>
+        </div>
+        <button type="button" id="close-csv-modal-btn" class="modal-close-btn" aria-label="Close modal">✕</button>
+      </div>
+
+      <div id="csv-preview-section">
+        <div class="csv-summary-box">
+          <div class="csv-stat">
+            <span class="csv-stat-label">File Name</span>
+            <strong id="csv-file-name" class="csv-stat-val text-ellipsis">records.csv</strong>
+          </div>
+          <div class="csv-stat">
+            <span class="csv-stat-label">Valid Entries Found</span>
+            <strong id="csv-valid-count" class="csv-stat-val text-safe">0</strong>
+          </div>
+          <div class="csv-stat">
+            <span class="csv-stat-label">Total Inflow (+Add)</span>
+            <strong id="csv-total-inflow" class="csv-stat-val text-safe">+$0.00</strong>
+          </div>
+          <div class="csv-stat">
+            <span class="csv-stat-label">Total Deductions (-Deduct)</span>
+            <strong id="csv-total-deductions" class="csv-stat-val text-danger">-$0.00</strong>
+          </div>
+        </div>
+
+        <div class="csv-mode-selection">
+          <label class="csv-mode-option">
+            <input type="radio" name="csv-import-mode" value="append" checked />
+            <div class="mode-info">
+              <strong>Append to existing records (Recommended)</strong>
+              <span>Keep your current transactions and add the imported CSV rows alongside them.</span>
+            </div>
+          </label>
+          <label class="csv-mode-option">
+            <input type="radio" name="csv-import-mode" value="replace" />
+            <div class="mode-info">
+              <strong>Replace existing records</strong>
+              <span>Reset your current transactions and replace them with the imported CSV data.</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="csv-preview-table-wrap">
+          <h5 class="csv-preview-heading">Sample Records (First 5 Rows)</h5>
+          <table class="csv-preview-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Amount</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody id="csv-preview-tbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="cancel-csv-import-btn" class="pill-btn secondary-pill btn-sm">Cancel</button>
+        <button type="button" id="confirm-csv-import-btn" class="pill-btn primary-pill btn-sm">Confirm & Import Records</button>
+      </div>
     </div>
   </div>
 
