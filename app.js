@@ -31,8 +31,12 @@ const DEFAULT_INCOME_CATEGORIES = {
   'Other': { color: '#64748b', icon: '🏷️' }
 };
 
+// DOM helper
+const $ = id => document.getElementById(id);
+
 // Application State
 const state = {
+  currentUser: null,         // { id, name, email }
   currentDate: new Date(),   // month being viewed
   selectedDay: null,         // 'YYYY-MM-DD' or null (= whole month)
   entries: [],
@@ -68,15 +72,415 @@ function getCategoryConfig(category, type) {
   return { color: '#64748b', icon: type === 'add' ? '💰' : '🏷️' };
 }
 
-// ---------- Storage Keys ----------
-const STORAGE_ENTRIES = 'spendflow_clean_expenses';
-const STORAGE_BASE = 'spendflow_base_balance';
-const STORAGE_EXPENSE_CATS = 'spendflow_expense_categories';
-const STORAGE_INCOME_CATS = 'spendflow_income_categories';
+// ========================================================
+// AUTHENTICATION & MULTI-USER STORAGE
+// ========================================================
+
+// Safe storage abstraction (handles environments like Streamlit components where localStorage is restricted)
+const storage = (() => {
+  const mem = {};
+  return {
+    getItem(k) {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          return window.localStorage.getItem(k);
+        }
+      } catch (e) {}
+      return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null;
+    },
+    setItem(k, v) {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem(k, String(v));
+          return;
+        }
+      } catch (e) {}
+      mem[k] = String(v);
+    },
+    removeItem(k) {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem(k);
+        }
+      } catch (e) {}
+      delete mem[k];
+    }
+  };
+})();
+
+const sessionStore = (() => {
+  const mem = {};
+  return {
+    getItem(k) {
+      try {
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          return window.sessionStorage.getItem(k);
+        }
+      } catch (e) {}
+      return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null;
+    },
+    setItem(k, v) {
+      try {
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          window.sessionStorage.setItem(k, String(v));
+          return;
+        }
+      } catch (e) {}
+      mem[k] = String(v);
+    },
+    removeItem(k) {
+      try {
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          window.sessionStorage.removeItem(k);
+        }
+      } catch (e) {}
+      delete mem[k];
+    }
+  };
+})();
+
+const AUTH_USERS_KEY = 'spendflow_auth_users';
+const AUTH_SESSION_KEY = 'spendflow_auth_session';
+
+const DEFAULT_USERS = [
+  {
+    id: 'user_demo',
+    name: 'Demo User',
+    email: 'demo@spendflow.app',
+    password: 'password123',
+    createdAt: 1700000000000
+  }
+];
+
+function getUserStorageKey(suffix) {
+  const userId = (state.currentUser && state.currentUser.id) ? state.currentUser.id : 'user_demo';
+  return `spendflow_${userId}_${suffix}`;
+}
+
+// Migrate legacy single-tenant storage to demo user if present
+function migrateLegacyStorage() {
+  try {
+    const legacyEntries = storage.getItem('spendflow_clean_expenses');
+    const demoEntriesKey = 'spendflow_user_demo_clean_expenses';
+    if (legacyEntries && !storage.getItem(demoEntriesKey)) {
+      storage.setItem(demoEntriesKey, legacyEntries);
+      const legacyBase = storage.getItem('spendflow_base_balance');
+      if (legacyBase) storage.setItem('spendflow_user_demo_base_balance', legacyBase);
+      const legacyExpCats = storage.getItem('spendflow_expense_categories');
+      if (legacyExpCats) storage.setItem('spendflow_user_demo_expense_categories', legacyExpCats);
+      const legacyIncCats = storage.getItem('spendflow_income_categories');
+      if (legacyIncCats) storage.setItem('spendflow_user_demo_income_categories', legacyIncCats);
+    }
+  } catch (e) {
+    console.warn('Storage migration exception', e);
+  }
+}
+
+function getRegisteredUsers() {
+  try {
+    const stored = JSON.parse(storage.getItem(AUTH_USERS_KEY));
+    if (Array.isArray(stored) && stored.length > 0) return stored;
+  } catch (e) {}
+  storage.setItem(AUTH_USERS_KEY, JSON.stringify(DEFAULT_USERS));
+  return [...DEFAULT_USERS];
+}
+
+function saveRegisteredUsers(users) {
+  storage.setItem(AUTH_USERS_KEY, JSON.stringify(users));
+}
+
+function getActiveSession() {
+  try {
+    const raw = storage.getItem(AUTH_SESSION_KEY) || sessionStore.getItem(AUTH_SESSION_KEY);
+    if (!raw) return null;
+    const session = JSON.parse(raw);
+    if (!session || !session.userId) return null;
+    const users = getRegisteredUsers();
+    return users.find(u => u.id === session.userId) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function setActiveSession(user, remember = true) {
+  const data = JSON.stringify({ userId: user.id, email: user.email, loggedAt: Date.now() });
+  if (remember) {
+    storage.setItem(AUTH_SESSION_KEY, data);
+    sessionStore.removeItem(AUTH_SESSION_KEY);
+  } else {
+    sessionStore.setItem(AUTH_SESSION_KEY, data);
+    storage.removeItem(AUTH_SESSION_KEY);
+  }
+}
+
+function clearActiveSession() {
+  storage.removeItem(AUTH_SESSION_KEY);
+  sessionStore.removeItem(AUTH_SESSION_KEY);
+}
+
+function getUserInitials(name) {
+  if (!name) return 'SF';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
+function updateUserProfileUI(user) {
+  if (!user) return;
+  const initials = getUserInitials(user.name);
+  if ($('user-avatar')) $('user-avatar').textContent = initials;
+  if ($('user-display-name')) $('user-display-name').textContent = user.name;
+  if ($('dropdown-user-avatar')) $('dropdown-user-avatar').textContent = initials;
+  if ($('dropdown-user-name')) $('dropdown-user-name').textContent = user.name;
+  if ($('dropdown-user-email')) $('dropdown-user-email').textContent = user.email;
+}
+
+function applyUserLogin(user, showGreeting = true) {
+  state.currentUser = user;
+  updateUserProfileUI(user);
+
+  // Hide auth modal & unblur app layout
+  if ($('auth-modal')) $('auth-modal').classList.add('hidden');
+  const layout = document.querySelector('.app-layout');
+  if (layout) layout.classList.remove('auth-blurred');
+
+  // Load user data & refresh views
+  loadState();
+  state.selectedDay = null;
+  setLogMode('deduct');
+  populateCategoryFilter();
+  if ($('expense-date-input')) $('expense-date-input').value = defaultLogDate();
+  renderAll();
+
+  if (showGreeting) {
+    showToast(`Welcome back, ${user.name}! 👋`);
+  }
+}
+
+function showAuthModal(mode = 'signin') {
+  const layout = document.querySelector('.app-layout');
+  if (layout) layout.classList.add('auth-blurred');
+  if ($('auth-modal')) $('auth-modal').classList.remove('hidden');
+  switchAuthTab(mode);
+}
+
+function switchAuthTab(mode) {
+  const isSignIn = mode === 'signin';
+  if ($('auth-tab-signin')) $('auth-tab-signin').classList.toggle('active', isSignIn);
+  if ($('auth-tab-signup')) $('auth-tab-signup').classList.toggle('active', !isSignIn);
+  if ($('auth-tab-signin')) $('auth-tab-signin').setAttribute('aria-selected', isSignIn ? 'true' : 'false');
+  if ($('auth-tab-signup')) $('auth-tab-signup').setAttribute('aria-selected', !isSignIn ? 'true' : 'false');
+
+  if ($('signin-form')) $('signin-form').classList.toggle('hidden', !isSignIn);
+  if ($('signup-form')) $('signup-form').classList.toggle('hidden', isSignIn);
+
+  hideAuthErrors();
+
+  if (isSignIn) {
+    setTimeout(() => { if ($('signin-email')) $('signin-email').focus(); }, 60);
+  } else {
+    setTimeout(() => { if ($('signup-name')) $('signup-name').focus(); }, 60);
+  }
+}
+
+function hideAuthErrors() {
+  if ($('signin-error-alert')) $('signin-error-alert').classList.add('hidden');
+  if ($('signup-error-alert')) $('signup-error-alert').classList.add('hidden');
+}
+
+function showSignInError(msg) {
+  const alert = $('signin-error-alert');
+  const text = $('signin-error-msg');
+  if (alert && text) {
+    text.textContent = msg;
+    alert.classList.remove('hidden');
+  }
+}
+
+function showSignUpError(msg) {
+  const alert = $('signup-error-alert');
+  const text = $('signup-error-msg');
+  if (alert && text) {
+    text.textContent = msg;
+    alert.classList.remove('hidden');
+  }
+}
+
+function handleSignIn(emailOrUsername, password, remember) {
+  hideAuthErrors();
+  const ident = (emailOrUsername || '').trim();
+  const pwd = (password || '').trim();
+
+  if (!ident) {
+    showSignInError('Please enter your email or username.');
+    if ($('signin-email')) $('signin-email').focus();
+    return;
+  }
+  if (!pwd) {
+    showSignInError('Please enter your password.');
+    if ($('signin-password')) $('signin-password').focus();
+    return;
+  }
+
+  const users = getRegisteredUsers();
+  const lowerIdent = ident.toLowerCase();
+  const user = users.find(u =>
+    (u.email && u.email.toLowerCase() === lowerIdent) ||
+    (u.name && u.name.toLowerCase() === lowerIdent) ||
+    (u.id === 'user_demo' && lowerIdent === 'demo')
+  );
+
+  if (!user) {
+    showSignInError('No account found with this email or username.');
+    if ($('signin-email')) $('signin-email').focus();
+    return;
+  }
+
+  if (user.password !== pwd) {
+    showSignInError('Incorrect password. Please try again.');
+    if ($('signin-password')) $('signin-password').focus();
+    return;
+  }
+
+  setActiveSession(user, remember);
+  applyUserLogin(user, true);
+}
+
+function handleSignUp(name, emailOrUsername, password, confirmPassword, preloadSample) {
+  hideAuthErrors();
+  const n = (name || '').trim();
+  const ident = (emailOrUsername || '').trim();
+  const pwd = (password || '').trim();
+  const cpwd = (confirmPassword || '').trim();
+
+  if (!n) {
+    showSignUpError('Please enter your full name or nickname.');
+    if ($('signup-name')) $('signup-name').focus();
+    return;
+  }
+  if (!ident) {
+    showSignUpError('Please enter a valid email or username.');
+    if ($('signup-email')) $('signup-email').focus();
+    return;
+  }
+  if (!pwd || pwd.length < 4) {
+    showSignUpError('Password must be at least 4 characters long.');
+    if ($('signup-password')) $('signup-password').focus();
+    return;
+  }
+  if (pwd !== cpwd) {
+    showSignUpError('Passwords do not match. Please verify.');
+    if ($('signup-confirm-password')) $('signup-confirm-password').focus();
+    return;
+  }
+
+  const users = getRegisteredUsers();
+  const lowerIdent = ident.toLowerCase();
+  const exists = users.some(u =>
+    (u.email && u.email.toLowerCase() === lowerIdent) ||
+    (u.name && u.name.toLowerCase() === lowerIdent)
+  );
+
+  if (exists) {
+    showSignUpError('An account with this email or username already exists.');
+    if ($('signup-email')) $('signup-email').focus();
+    return;
+  }
+
+  const newUser = {
+    id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    name: n,
+    email: lowerIdent,
+    password: pwd,
+    createdAt: Date.now()
+  };
+
+  users.push(newUser);
+  saveRegisteredUsers(users);
+
+  // If preload sample requested, initialize rich sample data for new user
+  if (preloadSample) {
+    const curY = state.currentDate.getFullYear();
+    const curM = state.currentDate.getMonth();
+    const makeDate = (monthOffset, day) => toDateKey(new Date(curY, curM + monthOffset, day));
+    const sampleEntries = [
+      { type: 'add', amount: 3200.00, category: 'Salary', note: 'Direct deposit paycheck', date: makeDate(0, 1) },
+      { type: 'deduct', amount: 1350.00, category: 'Housing & Rent', note: 'Monthly rent lease', date: makeDate(0, 1) },
+      { type: 'deduct', amount: 120.50, category: 'Food & Dining', note: 'Grocery haul', date: makeDate(0, 3) },
+      { type: 'deduct', amount: 65.00, category: 'Utilities & Bills', note: 'Internet fiber bill', date: makeDate(0, 5) },
+      { type: 'deduct', amount: 45.00, category: 'Transportation', note: 'Gas fill-up', date: makeDate(0, 8) },
+      { type: 'add', amount: 450.00, category: 'Freelance', note: 'Freelance consulting', date: makeDate(0, 12) },
+      { type: 'deduct', amount: 84.20, category: 'Entertainment', note: 'Dinner & cinema', date: makeDate(0, 15) },
+      { type: 'add', amount: 3200.00, category: 'Salary', note: 'Direct deposit paycheck', date: makeDate(0, 15) },
+      { type: 'deduct', amount: 55.00, category: 'Personal Care', note: 'Self-care & hair styling', date: makeDate(0, 19) },
+      { type: 'deduct', amount: 72.80, category: 'Food & Dining', note: 'Weekly supermarket', date: makeDate(0, 22) }
+    ].map((e, idx) => ({
+      id: `sample-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+      ...e,
+      createdAt: Date.now() - (idx * 3600000)
+    }));
+
+    storage.setItem(`spendflow_${newUser.id}_clean_expenses`, JSON.stringify(sampleEntries));
+    storage.setItem(`spendflow_${newUser.id}_base_balance`, '3200');
+  } else {
+    storage.setItem(`spendflow_${newUser.id}_clean_expenses`, JSON.stringify([]));
+    storage.setItem(`spendflow_${newUser.id}_base_balance`, '2500');
+  }
+
+  setActiveSession(newUser, true);
+  applyUserLogin(newUser, false);
+  showToast(`Account created! Welcome, ${newUser.name} 🎉`);
+}
+
+function handleSignOut() {
+  clearActiveSession();
+  state.currentUser = null;
+  state.entries = [];
+  closeUserDropdown();
+  showAuthModal('signin');
+  showToast('Signed out successfully. 👋');
+}
+
+function toggleUserDropdown() {
+  const menu = $('user-dropdown-menu');
+  const btn = $('user-profile-btn');
+  if (!menu || !btn) return;
+  const isHidden = menu.classList.contains('hidden');
+  menu.classList.toggle('hidden', !isHidden);
+  btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+}
+
+function closeUserDropdown() {
+  const menu = $('user-dropdown-menu');
+  const btn = $('user-profile-btn');
+  if (menu) menu.classList.add('hidden');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+function setupPasswordToggle(btnId, inputId) {
+  const btn = $(btnId);
+  const input = $(inputId);
+  if (!btn || !input) return;
+  btn.addEventListener('click', () => {
+    const isPw = input.type === 'password';
+    input.type = isPw ? 'text' : 'password';
+    const showIcon = btn.querySelector('.eye-show');
+    const hideIcon = btn.querySelector('.eye-hide');
+    if (showIcon) showIcon.classList.toggle('hidden', isPw);
+    if (hideIcon) hideIcon.classList.toggle('hidden', !isPw);
+  });
+}
 
 function loadState() {
+  const entriesKey = getUserStorageKey('clean_expenses');
+  const baseKey = getUserStorageKey('base_balance');
+  const expCatsKey = getUserStorageKey('expense_categories');
+  const incCatsKey = getUserStorageKey('income_categories');
+
   try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_ENTRIES) || '[]');
+    const stored = JSON.parse(storage.getItem(entriesKey) || '[]');
     state.entries = Array.isArray(stored) ? stored.map(e => ({
       ...e,
       type: e.type === 'add' ? 'add' : 'deduct',
@@ -86,12 +490,13 @@ function loadState() {
   } catch (e) {
     state.entries = [];
   }
-  const base = parseFloat(localStorage.getItem(STORAGE_BASE));
+
+  const base = parseFloat(storage.getItem(baseKey));
   state.baseBalance = isNaN(base) ? 2500 : base;
 
   // Load custom expense categories
   try {
-    const exp = JSON.parse(localStorage.getItem(STORAGE_EXPENSE_CATS));
+    const exp = JSON.parse(storage.getItem(expCatsKey));
     if (exp && typeof exp === 'object' && Object.keys(exp).length > 0) {
       state.expenseCategories = exp;
     } else {
@@ -103,7 +508,7 @@ function loadState() {
 
   // Load custom income categories
   try {
-    const inc = JSON.parse(localStorage.getItem(STORAGE_INCOME_CATS));
+    const inc = JSON.parse(storage.getItem(incCatsKey));
     if (inc && typeof inc === 'object' && Object.keys(inc).length > 0) {
       state.incomeCategories = inc;
     } else {
@@ -115,16 +520,16 @@ function loadState() {
 }
 
 function saveEntries() {
-  localStorage.setItem(STORAGE_ENTRIES, JSON.stringify(state.entries));
+  storage.setItem(getUserStorageKey('clean_expenses'), JSON.stringify(state.entries));
 }
 
 function saveBase() {
-  localStorage.setItem(STORAGE_BASE, String(state.baseBalance));
+  storage.setItem(getUserStorageKey('base_balance'), String(state.baseBalance));
 }
 
 function saveCategories() {
-  localStorage.setItem(STORAGE_EXPENSE_CATS, JSON.stringify(state.expenseCategories));
-  localStorage.setItem(STORAGE_INCOME_CATS, JSON.stringify(state.incomeCategories));
+  storage.setItem(getUserStorageKey('expense_categories'), JSON.stringify(state.expenseCategories));
+  storage.setItem(getUserStorageKey('income_categories'), JSON.stringify(state.incomeCategories));
 }
 
 // ---------- Helpers ----------
@@ -177,8 +582,6 @@ function getViewEntries() {
   if (state.selectedDay) return state.entries.filter(e => e.date === state.selectedDay);
   return getMonthEntries();
 }
-
-const $ = id => document.getElementById(id);
 
 // ========================================================
 // RENDERING
@@ -1758,7 +2161,13 @@ function initEventListeners() {
 
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      if (!$('category-modal').classList.contains('hidden')) {
+      if ($('auth-modal') && !$('auth-modal').classList.contains('hidden') && !state.currentUser) {
+        // Esc does not dismiss auth when not signed in
+        return;
+      }
+      if ($('user-dropdown-menu') && !$('user-dropdown-menu').classList.contains('hidden')) {
+        closeUserDropdown();
+      } else if (!$('category-modal').classList.contains('hidden')) {
         closeCategoryModal();
       } else if ($('editing-expense-id').value) {
         cancelEdit();
@@ -1767,13 +2176,93 @@ function initEventListeners() {
   });
 }
 
+function initAuthEvents() {
+  if ($('auth-tab-signin')) $('auth-tab-signin').addEventListener('click', () => switchAuthTab('signin'));
+  if ($('auth-tab-signup')) $('auth-tab-signup').addEventListener('click', () => switchAuthTab('signup'));
+  if ($('switch-to-signup-btn')) $('switch-to-signup-btn').addEventListener('click', () => switchAuthTab('signup'));
+  if ($('switch-to-signin-btn')) $('switch-to-signin-btn').addEventListener('click', () => switchAuthTab('signin'));
+
+  if ($('quick-demo-login-btn')) {
+    $('quick-demo-login-btn').addEventListener('click', () => {
+      if ($('signin-email')) $('signin-email').value = 'demo@spendflow.app';
+      if ($('signin-password')) $('signin-password').value = 'password123';
+      handleSignIn('demo@spendflow.app', 'password123', true);
+    });
+  }
+
+  if ($('auth-fill-demo-link')) {
+    $('auth-fill-demo-link').addEventListener('click', () => {
+      if ($('signin-email')) $('signin-email').value = 'demo@spendflow.app';
+      if ($('signin-password')) $('signin-password').value = 'password123';
+      if ($('signin-password')) $('signin-password').focus();
+    });
+  }
+
+  if ($('signin-form')) {
+    $('signin-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const email = $('signin-email') ? $('signin-email').value : '';
+      const password = $('signin-password') ? $('signin-password').value : '';
+      const remember = $('signin-remember') ? $('signin-remember').checked : true;
+      handleSignIn(email, password, remember);
+    });
+  }
+
+  if ($('signup-form')) {
+    $('signup-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const name = $('signup-name') ? $('signup-name').value : '';
+      const email = $('signup-email') ? $('signup-email').value : '';
+      const password = $('signup-password') ? $('signup-password').value : '';
+      const confirm = $('signup-confirm-password') ? $('signup-confirm-password').value : '';
+      const sample = $('signup-sample-data') ? $('signup-sample-data').checked : true;
+      handleSignUp(name, email, password, confirm, sample);
+    });
+  }
+
+  setupPasswordToggle('signin-toggle-pw', 'signin-password');
+  setupPasswordToggle('signup-toggle-pw', 'signup-password');
+  setupPasswordToggle('signup-toggle-confirm-pw', 'signup-confirm-password');
+
+  if ($('user-profile-btn')) {
+    $('user-profile-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      toggleUserDropdown();
+    });
+  }
+
+  if ($('switch-account-btn')) {
+    $('switch-account-btn').addEventListener('click', () => {
+      closeUserDropdown();
+      showAuthModal('signin');
+    });
+  }
+
+  if ($('logout-btn')) {
+    $('logout-btn').addEventListener('click', () => {
+      handleSignOut();
+    });
+  }
+
+  document.addEventListener('click', e => {
+    const wrap = $('user-profile-wrapper');
+    if (wrap && !wrap.contains(e.target)) {
+      closeUserDropdown();
+    }
+  });
+}
+
 function initApp() {
-  loadState();
+  migrateLegacyStorage();
   initEventListeners();
-  setLogMode('deduct');
-  populateCategoryFilter();
-  $('expense-date-input').value = defaultLogDate();
-  renderAll();
+  initAuthEvents();
+
+  const user = getActiveSession();
+  if (user) {
+    applyUserLogin(user, false);
+  } else {
+    showAuthModal('signin');
+  }
 }
 
 if (document.readyState === 'loading') {

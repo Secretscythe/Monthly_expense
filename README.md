@@ -10,6 +10,8 @@ A fast, clean, and modern monthly expense tracker built to work seamlessly on bo
 
 ## ✨ Features
 
+- **Secure Sign-in & Authentication**: User login portal required before accessing financial records. Supports multi-user accounts, password visibility toggles, session persistence ("Keep me signed in"), and an instant 1-Click Demo Login (`demo@spendflow.app` / `password123`).
+- **Multi-User Data Isolation**: Scoped personal data storage per user account with full profile avatar chip, active session indicator, account switching, and sign-out capabilities.
 - **Interactive Monthly Calendar**: Full calendar grid with individual day accounting, per-day income/expense badges, and single-click day isolation.
 - **Add & Deduct Tracking**: Dual-mode logging for income inflow (`+ Add`) and expense deductions (`− Deduct`) with 2-step verification for starting balance.
 - **Net Savings & Savings Rate**: Automatic computation of net savings (`Income − Expenses`) and savings percentage.
