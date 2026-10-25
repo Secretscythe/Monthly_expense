@@ -31,6 +31,26 @@ const DEFAULT_INCOME_CATEGORIES = {
   'Other': { color: '#64748b', icon: '🏷️' }
 };
 
+// Supported Currencies configuration
+const CURRENCIES = {
+  USD: { code: 'USD', symbol: '$', name: 'US Dollar', flag: '🇺🇸', locale: 'en-US' },
+  GBP: { code: 'GBP', symbol: '£', name: 'British Pound', flag: '🇬🇧', locale: 'en-GB' },
+  EUR: { code: 'EUR', symbol: '€', name: 'Euro', flag: '🇪🇺', locale: 'en-IE' },
+  INR: { code: 'INR', symbol: '₹', name: 'Indian Rupee', flag: '🇮🇳', locale: 'en-IN' },
+  JPY: { code: 'JPY', symbol: '¥', name: 'Japanese Yen', flag: '🇯🇵', locale: 'ja-JP', fractionDigits: 0 },
+  CAD: { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar', flag: '🇨🇦', locale: 'en-CA' },
+  AUD: { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', flag: '🇦🇺', locale: 'en-AU' },
+  CHF: { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc', flag: '🇨🇭', locale: 'de-CH' },
+  CNY: { code: 'CNY', symbol: '¥', name: 'Chinese Yuan', flag: '🇨🇳', locale: 'zh-CN' },
+  AED: { code: 'AED', symbol: 'AED', name: 'UAE Dirham', flag: '🇦🇪', locale: 'en-AE' },
+  SGD: { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar', flag: '🇸🇬', locale: 'en-SG' },
+  NZD: { code: 'NZD', symbol: 'NZ$', name: 'New Zealand Dollar', flag: '🇳🇿', locale: 'en-NZ' },
+  BRL: { code: 'BRL', symbol: 'R$', name: 'Brazilian Real', flag: '🇧🇷', locale: 'pt-BR' },
+  ZAR: { code: 'ZAR', symbol: 'R', name: 'South African Rand', flag: '🇿🇦', locale: 'en-ZA' },
+  MXN: { code: 'MXN', symbol: 'Mex$', name: 'Mexican Peso', flag: '🇲🇽', locale: 'es-MX' },
+  SEK: { code: 'SEK', symbol: 'kr', name: 'Swedish Krona', flag: '🇸🇪', locale: 'sv-SE' }
+};
+
 // DOM helper
 const $ = id => document.getElementById(id);
 
@@ -41,6 +61,7 @@ const state = {
   selectedDay: null,         // 'YYYY-MM-DD' or null (= whole month)
   entries: [],
   baseBalance: 2500,
+  currency: 'USD',           // Active currency code (USD, GBP, EUR, etc.)
   filterCategory: 'ALL',
   filterType: 'ALL',         // 'ALL' | 'add' | 'deduct'
   trendMode: 'daily',        // 'daily' | 'weekly'
@@ -867,6 +888,12 @@ function loadState() {
   const baseKey = getUserStorageKey('base_balance');
   const expCatsKey = getUserStorageKey('expense_categories');
   const incCatsKey = getUserStorageKey('income_categories');
+  const currKey = getUserStorageKey('currency');
+
+  // Load custom currency choice
+  const storedCurr = storage.getItem(currKey);
+  state.currency = (storedCurr && CURRENCIES[storedCurr]) ? storedCurr : 'USD';
+  updateCurrencyUI();
 
   try {
     const stored = JSON.parse(storage.getItem(entriesKey) || '[]');
@@ -921,6 +948,117 @@ function saveCategories() {
   storage.setItem(getUserStorageKey('income_categories'), JSON.stringify(state.incomeCategories));
 }
 
+function saveCurrency() {
+  storage.setItem(getUserStorageKey('currency'), state.currency);
+}
+
+function setCurrency(code) {
+  if (!CURRENCIES[code]) return;
+  state.currency = code;
+  saveCurrency();
+  updateCurrencyUI();
+  closeCurrencyDropdown();
+  renderAll();
+  const cfg = CURRENCIES[code];
+  showToast(`Currency changed to ${cfg.name} (${cfg.symbol}) 💱`);
+}
+
+function getCurrencySymbol() {
+  const currCode = state.currency || 'USD';
+  const cfg = CURRENCIES[currCode] || CURRENCIES.USD;
+  return cfg.symbol || '$';
+}
+
+function updateCurrencyUI() {
+  const code = state.currency || 'USD';
+  const cfg = CURRENCIES[code] || CURRENCIES.USD;
+  const sym = cfg.symbol || '$';
+
+  if ($('current-currency-flag')) $('current-currency-flag').textContent = cfg.flag || '🌐';
+  if ($('current-currency-symbol')) $('current-currency-symbol').textContent = sym;
+  if ($('current-currency-code')) $('current-currency-code').textContent = cfg.code;
+  if ($('balance-prefix-sign')) $('balance-prefix-sign').textContent = sym;
+
+  const isAdd = state.logMode === 'add';
+  if ($('amount-prefix-sign')) $('amount-prefix-sign').textContent = `${isAdd ? '+' : '-'}${sym}`;
+  if ($('amount-input-label')) $('amount-input-label').textContent = isAdd ? `Amount to Add (${sym})` : `Amount to Deduct (${sym})`;
+
+  if ($('user-profile-currency-select')) {
+    $('user-profile-currency-select').value = code;
+  }
+
+  const list = $('currency-options-list');
+  if (list) {
+    const items = list.querySelectorAll('.currency-option-item');
+    items.forEach(item => {
+      item.classList.toggle('active', item.dataset.currency === code);
+    });
+  }
+}
+
+function toggleCurrencyDropdown() {
+  const menu = $('currency-dropdown-menu');
+  const wrap = $('currency-dropdown-wrap');
+  if (!menu) return;
+  const isHidden = menu.classList.contains('hidden');
+  if (isHidden) {
+    closeUserDropdown();
+    menu.classList.remove('hidden');
+    if (wrap) wrap.classList.add('open');
+  } else {
+    closeCurrencyDropdown();
+  }
+}
+
+function closeCurrencyDropdown() {
+  const menu = $('currency-dropdown-menu');
+  const wrap = $('currency-dropdown-wrap');
+  if (menu) menu.classList.add('hidden');
+  if (wrap) wrap.classList.remove('open');
+}
+
+function populateCurrencySelectors() {
+  // Populate header dropdown list
+  const list = $('currency-options-list');
+  if (list) {
+    list.innerHTML = Object.entries(CURRENCIES).map(([code, c]) => `
+      <button type="button" class="currency-option-item ${code === state.currency ? 'active' : ''}" data-currency="${code}">
+        <div class="currency-option-left">
+          <span class="currency-option-flag">${c.flag}</span>
+          <div>
+            <span class="currency-option-code">${c.code}</span>
+            <span class="currency-option-name">${c.name}</span>
+          </div>
+        </div>
+        <div class="currency-option-right">
+          <span class="currency-option-symbol">${c.symbol}</span>
+          <span class="currency-check-icon">✓</span>
+        </div>
+      </button>
+    `).join('');
+
+    list.querySelectorAll('.currency-option-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setCurrency(btn.dataset.currency);
+      });
+    });
+  }
+
+  // Populate user profile dropdown select
+  const select = $('user-profile-currency-select');
+  if (select) {
+    select.innerHTML = Object.entries(CURRENCIES).map(([code, c]) => `
+      <option value="${code}" ${code === state.currency ? 'selected' : ''}>
+        ${c.flag} ${c.code} (${c.symbol}) - ${c.name}
+      </option>
+    `).join('');
+
+    select.addEventListener('change', e => {
+      setCurrency(e.target.value);
+    });
+  }
+}
+
 // ---------- Helpers ----------
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -938,9 +1076,19 @@ function parseDateKey(key) {
 }
 
 function formatCurrency(amount) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2
-  }).format(amount || 0);
+  const currCode = state.currency || 'USD';
+  const cfg = CURRENCIES[currCode] || CURRENCIES.USD;
+  const digits = cfg.fractionDigits !== undefined ? cfg.fractionDigits : 2;
+  try {
+    return new Intl.NumberFormat(cfg.locale, {
+      style: 'currency',
+      currency: cfg.code,
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    }).format(amount || 0);
+  } catch (e) {
+    return `${cfg.symbol}${(amount || 0).toFixed(digits)}`;
+  }
 }
 
 function formatSigned(amount) {
@@ -1256,7 +1404,7 @@ function renderTrend() {
   const avg = counted.length ? total / counted.length : 0;
   const maxBucket = buckets.reduce((best, b) => (b.value > (best ? best.value : 0) ? b : best), null);
   $('trend-avg').textContent = `${formatCurrency(avg)} / ${unit}`;
-  $('trend-max').textContent = maxBucket ? `${formatCurrency(maxBucket.value)} • ${maxBucket.title.replace(/, \d{4}$/, '')}` : '$0.00';
+  $('trend-max').textContent = maxBucket ? `${formatCurrency(maxBucket.value)} • ${maxBucket.title.replace(/, \d{4}$/, '')}` : formatCurrency(0);
 
   // Trend: last 7 days vs previous 7 days, or this week vs last week
   const changeEl = $('trend-change');
@@ -1936,10 +2084,11 @@ function toggleCustomCategory(focus = true) {
 function setLogMode(mode, keepCategory) {
   state.logMode = mode;
   const isAdd = mode === 'add';
+  const sym = getCurrencySymbol();
   $('mode-add-btn').classList.toggle('active', isAdd);
   $('mode-deduct-btn').classList.toggle('active', !isAdd);
-  $('amount-prefix-sign').textContent = isAdd ? '+$' : '-$';
-  $('amount-input-label').textContent = isAdd ? 'Amount to Add ($)' : 'Amount to Deduct ($)';
+  $('amount-prefix-sign').textContent = `${isAdd ? '+' : '-'}${sym}`;
+  $('amount-input-label').textContent = isAdd ? `Amount to Add (${sym})` : `Amount to Deduct (${sym})`;
   $('add-expense-submit-btn').classList.toggle('add-mode-btn', isAdd);
   if (!$('editing-expense-id').value) {
     $('submit-btn-text').textContent = isAdd ? '+ Add Money' : '− Deduct Money';
@@ -2288,7 +2437,7 @@ function exportCSV() {
   const income = sumAmounts(list.filter(e => e.type === 'add'));
   const expenses = sumAmounts(list.filter(e => e.type === 'deduct'));
   const q = s => `"${String(s).replace(/"/g, '""')}"`;
-  const rows = [['Date', 'Day', 'Type', 'Category', 'Note', 'Amount ($)'].join(',')];
+  const rows = [['Date', 'Day', 'Type', 'Category', 'Note', `Amount (${getCurrencySymbol()})`].join(',')];
   list.forEach(e => rows.push([
     q(e.date),
     q(parseDateKey(e.date).toLocaleDateString('en-US', { weekday: 'long' })),
@@ -3049,6 +3198,13 @@ function initAuthEvents() {
   setupPasswordToggle('reset-toggle-pw', 'reset-new-password');
   setupPasswordToggle('reset-toggle-confirm-pw', 'reset-confirm-password');
 
+  if ($('currency-selector-btn')) {
+    $('currency-selector-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      toggleCurrencyDropdown();
+    });
+  }
+
   if ($('user-profile-btn')) {
     $('user-profile-btn').addEventListener('click', e => {
       e.stopPropagation();
@@ -3116,6 +3272,10 @@ function initAuthEvents() {
     if (wrap && !wrap.contains(e.target)) {
       closeUserDropdown();
     }
+    const currWrap = $('currency-dropdown-wrap');
+    if (currWrap && !currWrap.contains(e.target)) {
+      closeCurrencyDropdown();
+    }
   });
 
   initCSVImport();
@@ -3125,6 +3285,7 @@ function initApp() {
   migrateLegacyStorage();
   initEventListeners();
   initAuthEvents();
+  populateCurrencySelectors();
 
   const user = getActiveSession();
   if (user) {
