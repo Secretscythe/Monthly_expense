@@ -169,13 +169,20 @@ function clearAuthInputs() {
   const ids = [
     'signin-email', 'signin-password',
     'signup-name', 'signup-email', 'signup-password', 'signup-confirm-password',
-    'reset-email', 'reset-new-password', 'reset-confirm-password'
+    'reset-email', 'reset-code-input', 'reset-new-password', 'reset-confirm-password'
   ];
   ids.forEach(id => {
     const el = $(id);
     if (el) el.value = '';
   });
   if ($('signup-email-status-pill')) $('signup-email-status-pill').classList.add('hidden');
+  if ($('reset-step-1')) $('reset-step-1').classList.remove('hidden');
+  if ($('reset-step-2')) $('reset-step-2').classList.add('hidden');
+  if ($('reset-code-status')) {
+    $('reset-code-status').textContent = '';
+    $('reset-code-status').className = 'code-status-msg';
+  }
+  hideSecurityToast();
 }
 
 function getUserStorageKey(suffix) {
@@ -543,6 +550,176 @@ function handleSignUp(name, emailOrUsername, password, confirmPassword, preloadS
   showToast(`Account created! Welcome, ${newUser.name} 🎉`);
 }
 
+// ========================================================
+// EMAIL DISPATCH & CODE VERIFICATION SERVICE (FOR RESET)
+// ========================================================
+
+const emailAuthService = {
+  verification: null,
+  cooldownTimer: null,
+  cooldownRemaining: 0,
+
+  generateCode() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  },
+
+  sendResetCode(email) {
+    const trimmed = (email || '').trim().toLowerCase();
+    const code = this.generateCode();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    this.verification = {
+      email: trimmed,
+      code,
+      type: 'reset',
+      expiresAt,
+      verified: false
+    };
+
+    showSecurityToast(trimmed, code, 'reset');
+    this.startCooldown();
+    return code;
+  },
+
+  startCooldown() {
+    this.cooldownRemaining = 60;
+    if (this.cooldownTimer) clearInterval(this.cooldownTimer);
+
+    const updateCountdown = () => {
+      const countdownEl = $('reset-resend-countdown');
+      if (this.cooldownRemaining > 0) {
+        if (countdownEl) countdownEl.textContent = `Resend in ${this.cooldownRemaining}s`;
+        this.cooldownRemaining--;
+      } else {
+        clearInterval(this.cooldownTimer);
+        this.cooldownTimer = null;
+        if (countdownEl) countdownEl.textContent = '';
+      }
+    };
+
+    updateCountdown();
+    this.cooldownTimer = setInterval(updateCountdown, 1000);
+  },
+
+  verifyResetCode(email, enteredCode) {
+    const trimmedEmail = (email || '').trim().toLowerCase();
+    const trimmedCode = (enteredCode || '').trim();
+
+    if (!this.verification || this.verification.type !== 'reset' || this.verification.email !== trimmedEmail) {
+      return { success: false, message: 'Please request a verification code for this email first.' };
+    }
+
+    if (Date.now() > this.verification.expiresAt) {
+      return { success: false, message: 'Verification code has expired. Please request a new code.' };
+    }
+
+    if (this.verification.code !== trimmedCode) {
+      return { success: false, message: 'Invalid verification code. Please check your email or alert and try again.' };
+    }
+
+    this.verification.verified = true;
+    return { success: true, message: '✅ Security code verified! Enter your new password below.' };
+  },
+
+  isResetVerified(email) {
+    const trimmed = (email || '').trim().toLowerCase();
+    return (
+      this.verification &&
+      this.verification.type === 'reset' &&
+      this.verification.email === trimmed &&
+      this.verification.verified &&
+      Date.now() <= this.verification.expiresAt
+    );
+  }
+};
+
+function showSecurityToast(email, code, type) {
+  const toast = $('email-security-toast');
+  if (!toast) return;
+
+  if ($('toast-recipient-email')) $('toast-recipient-email').textContent = email;
+  if ($('toast-display-code')) $('toast-display-code').textContent = code;
+  if ($('toast-expiry-countdown')) $('toast-expiry-countdown').textContent = 'Valid for 10:00';
+
+  toast.classList.remove('hidden');
+
+  const autofillBtn = $('toast-autofill-btn');
+  if (autofillBtn) {
+    autofillBtn.onclick = () => {
+      if ($('reset-code-input')) {
+        $('reset-code-input').value = code;
+        $('reset-code-input').focus();
+        handleVerifyResetCode();
+      }
+      showToast('Security code auto-filled! ⚡');
+    };
+  }
+}
+
+function hideSecurityToast() {
+  const toast = $('email-security-toast');
+  if (toast) toast.classList.add('hidden');
+}
+
+function handleResetSendCode() {
+  hideAuthErrors();
+  const email = ($('reset-email') ? $('reset-email').value : '').trim();
+  if (!email) {
+    showResetError('Please enter your registered email address.');
+    if ($('reset-email')) $('reset-email').focus();
+    return;
+  }
+  if (!isValidEmail(email)) {
+    showResetError('Please enter a valid email address format (e.g. name@gmail.com).');
+    if ($('reset-email')) $('reset-email').focus();
+    return;
+  }
+
+  const users = getRegisteredUsers();
+  const lowerEmail = email.toLowerCase();
+  const user = users.find(u =>
+    (u.email && u.email.toLowerCase() === lowerEmail) ||
+    (u.name && u.name.toLowerCase() === lowerEmail) ||
+    (u.id === 'user_demo' && lowerEmail === 'demo@spendflow.app') ||
+    (u.id === 'user_admin' && lowerEmail === 'admin@spendflow.app')
+  );
+
+  if (!user) {
+    showResetError('No account found with this email address. Please check your spelling or create an account.');
+    if ($('reset-email')) $('reset-email').focus();
+    return;
+  }
+
+  // Reveal Step 2 and send security code to that specific email
+  if ($('reset-step-1')) $('reset-step-1').classList.add('hidden');
+  if ($('reset-step-2')) $('reset-step-2').classList.remove('hidden');
+  if ($('reset-sent-email-display')) $('reset-sent-email-display').textContent = email;
+
+  emailAuthService.sendResetCode(email);
+  if ($('reset-code-input')) $('reset-code-input').focus();
+}
+
+function handleVerifyResetCode() {
+  const email = ($('reset-email') ? $('reset-email').value : '').trim();
+  const code = ($('reset-code-input') ? $('reset-code-input').value : '').trim();
+  const statusMsg = $('reset-code-status');
+
+  if (!code) {
+    if (statusMsg) {
+      statusMsg.className = 'code-status-msg error';
+      statusMsg.textContent = 'Please enter the 6-digit security code.';
+    }
+    return false;
+  }
+
+  const res = emailAuthService.verifyResetCode(email, code);
+  if (statusMsg) {
+    statusMsg.className = `code-status-msg ${res.success ? 'success' : 'error'}`;
+    statusMsg.textContent = res.message;
+  }
+  return res.success;
+}
+
 function handleResetPassword(emailOrUsername, newPassword, confirmPassword) {
   hideAuthErrors();
   const ident = (emailOrUsername || '').trim();
@@ -554,11 +731,23 @@ function handleResetPassword(emailOrUsername, newPassword, confirmPassword) {
     if ($('reset-email')) $('reset-email').focus();
     return;
   }
-  if (!isValidEmail(ident)) {
-    showResetError('Please enter a valid email address format.');
-    if ($('reset-email')) $('reset-email').focus();
-    return;
+
+  // Security check: Must verify code sent to this email address
+  if (!emailAuthService.isResetVerified(ident)) {
+    const codeEntered = ($('reset-code-input') ? $('reset-code-input').value : '').trim();
+    if (!codeEntered) {
+      showResetError('Security code required: Enter the 6-digit code sent to your email.');
+      if ($('reset-code-input')) $('reset-code-input').focus();
+      return;
+    }
+    const verified = handleVerifyResetCode();
+    if (!verified) {
+      showResetError('Invalid security verification code. Please check your email and try again.');
+      if ($('reset-code-input')) $('reset-code-input').focus();
+      return;
+    }
   }
+
   if (!pwd || pwd.length < 4) {
     showResetError('New password must be at least 4 characters long.');
     if ($('reset-new-password')) $('reset-new-password').focus();
@@ -589,6 +778,7 @@ function handleResetPassword(emailOrUsername, newPassword, confirmPassword) {
   saveRegisteredUsers(users);
 
   if ($('reset-success-alert')) $('reset-success-alert').classList.remove('hidden');
+  hideSecurityToast();
 
   setTimeout(() => {
     clearAuthInputs();
@@ -2804,6 +2994,43 @@ function initAuthEvents() {
   if ($('signup-email')) {
     $('signup-email').addEventListener('input', handleSignUpEmailCheck);
     $('signup-email').addEventListener('blur', handleSignUpEmailCheck);
+  }
+
+  if ($('close-security-toast-btn')) {
+    $('close-security-toast-btn').addEventListener('click', hideSecurityToast);
+  }
+
+  if ($('reset-send-code-btn')) {
+    $('reset-send-code-btn').addEventListener('click', handleResetSendCode);
+  }
+
+  if ($('reset-email')) {
+    $('reset-email').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleResetSendCode();
+      }
+    });
+  }
+
+  if ($('reset-verify-btn')) {
+    $('reset-verify-btn').addEventListener('click', handleVerifyResetCode);
+  }
+
+  if ($('reset-code-input')) {
+    $('reset-code-input').addEventListener('input', e => {
+      if (e.target.value.trim().length === 6) {
+        handleVerifyResetCode();
+      }
+    });
+  }
+
+  if ($('reset-back-to-step1-btn')) {
+    $('reset-back-to-step1-btn').addEventListener('click', () => {
+      if ($('reset-step-1')) $('reset-step-1').classList.remove('hidden');
+      if ($('reset-step-2')) $('reset-step-2').classList.add('hidden');
+      if ($('reset-email')) $('reset-email').focus();
+    });
   }
 
   if ($('reset-form')) {

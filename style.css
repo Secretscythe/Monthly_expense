@@ -3174,5 +3174,222 @@ body.auth-locked .app-layout {
   color: #34d399;
 }
 
+/* ========================================================
+   SECURITY NOTIFICATION TOAST & CODE VERIFICATION
+   ======================================================== */
+
+.security-toast {
+  position: fixed;
+  top: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100000;
+  width: 90%;
+  max-width: 480px;
+  animation: slideDownToast 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDownToast {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.security-toast-card {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(99, 102, 241, 0.45);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.15rem;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(99, 102, 241, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.toast-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toast-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #a5b4fc;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full);
+}
+
+.toast-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.2rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.1rem 0.3rem;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease;
+}
+
+.toast-close-btn:hover {
+  color: #fff;
+}
+
+.toast-email-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.toast-email-row strong {
+  color: #fff;
+}
+
+.toast-timer {
+  font-size: 0.72rem;
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.toast-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: rgba(8, 12, 22, 0.8);
+  border: 1px dashed rgba(99, 102, 241, 0.5);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.85rem;
+}
+
+.toast-code-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.toast-code-label {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+.toast-code-digits {
+  font-family: 'Outfit', monospace;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: #6ee7b7;
+}
+
+.toast-subtext {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.input-helper-text {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  margin-top: 0.3rem;
+}
+
+/* Code Verification Step Box */
+.code-verify-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+  margin-bottom: 0.9rem;
+  animation: fadeIn 0.25s ease;
+}
+
+.code-verify-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+
+.code-verify-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #818cf8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.countdown-text {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.code-verify-prompt {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+}
+
+.code-verify-prompt strong {
+  color: #fff;
+}
+
+.code-verify-input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.code-digit-input {
+  font-family: 'Outfit', monospace;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-align: center;
+  flex: 1;
+  background: rgba(10, 15, 28, 0.8) !important;
+}
+
+.code-status-msg {
+  font-size: 0.73rem;
+  margin-top: 0.4rem;
+  min-height: 1.1rem;
+}
+
+.code-status-msg.error {
+  color: #f87171;
+}
+
+.code-status-msg.success {
+  color: #34d399;
+  font-weight: 600;
+}
+
+.btn-xs {
+  padding: 0.2rem 0.55rem !important;
+  font-size: 0.72rem !important;
+  border-radius: var(--radius-full) !important;
+}
+
+
 
 
