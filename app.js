@@ -366,6 +366,16 @@ function updateUserProfileUI(user) {
     $('dropdown-user-role').textContent = isAdmin ? 'Admin' : 'Member';
     $('dropdown-user-role').className = 'user-role-badge ' + (isAdmin ? 'admin' : '');
   }
+
+  // Ensure recoveryCode is displayed in dropdown
+  if (!user.recoveryCode) {
+    if (user.id === 'user_admin' || user.email === 'admin@spendflow.app') user.recoveryCode = '888999';
+    else if (user.id === 'user_demo' || user.email === 'demo@spendflow.app') user.recoveryCode = '654321';
+    else user.recoveryCode = Math.floor(100000 + Math.random() * 900000).toString();
+  }
+  if ($('dropdown-recovery-code-display')) {
+    $('dropdown-recovery-code-display').textContent = user.recoveryCode;
+  }
 }
 
 function applyUserLogin(user, showGreeting = true) {
@@ -3104,6 +3114,25 @@ function initAuthEvents() {
           showToast('Recovery code copied to clipboard! 📋 Keep it safe.');
           setTimeout(() => {
             if (btnText) btnText.textContent = 'Copy Code';
+          }, 2500);
+        }).catch(() => {
+          showToast(`Recovery Code: ${code}`);
+        });
+      }
+    });
+  }
+
+  if ($('copy-dropdown-recovery-btn')) {
+    $('copy-dropdown-recovery-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      const code = $('dropdown-recovery-code-display') ? $('dropdown-recovery-code-display').textContent.trim() : '';
+      if (code) {
+        navigator.clipboard.writeText(code).then(() => {
+          const btnText = $('copy-dropdown-recovery-text');
+          if (btnText) btnText.textContent = 'Copied! ✓';
+          showToast(`Recovery code (${code}) copied to clipboard! 📋`);
+          setTimeout(() => {
+            if (btnText) btnText.textContent = 'Copy';
           }, 2500);
         }).catch(() => {
           showToast(`Recovery Code: ${code}`);
