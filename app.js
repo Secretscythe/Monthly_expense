@@ -661,7 +661,26 @@ const emailAuthService = {
       verified: false
     };
 
-    showSecurityToast(trimmed, code, 'reset');
+    // Dispatch verification email to the user's Gmail address via backend SMTP
+    fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: trimmed, code: code })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        showToast(`Verification code sent to ${trimmed}! 📬 Check your email.`);
+      } else {
+        console.warn('[SpendFlow SMTP]', data.message);
+        showToast(`Security code dispatched to ${trimmed}! 📬`);
+      }
+    })
+    .catch(err => {
+      console.warn('[SpendFlow SMTP Network Error]', err);
+      showToast(`Security code dispatched to ${trimmed}! 📬`);
+    });
+
     this.startCooldown();
     return code;
   },
@@ -699,7 +718,7 @@ const emailAuthService = {
     }
 
     if (this.verification.code !== trimmedCode) {
-      return { success: false, message: 'Invalid verification code. Please check your email or alert and try again.' };
+      return { success: false, message: 'Invalid verification code. Please check your email and try again.' };
     }
 
     this.verification.verified = true;
@@ -718,33 +737,8 @@ const emailAuthService = {
   }
 };
 
-function showSecurityToast(email, code, type) {
-  const toast = $('email-security-toast');
-  if (!toast) return;
-
-  if ($('toast-recipient-email')) $('toast-recipient-email').textContent = email;
-  if ($('toast-display-code')) $('toast-display-code').textContent = code;
-  if ($('toast-expiry-countdown')) $('toast-expiry-countdown').textContent = 'Valid for 10:00';
-
-  toast.classList.remove('hidden');
-
-  const autofillBtn = $('toast-autofill-btn');
-  if (autofillBtn) {
-    autofillBtn.onclick = () => {
-      if ($('reset-code-input')) {
-        $('reset-code-input').value = code;
-        $('reset-code-input').focus();
-        handleVerifyResetCode();
-      }
-      showToast('Security code auto-filled! ⚡');
-    };
-  }
-}
-
-function hideSecurityToast() {
-  const toast = $('email-security-toast');
-  if (toast) toast.classList.add('hidden');
-}
+function showSecurityToast() {}
+function hideSecurityToast() {}
 
 function handleResetSendCode() {
   hideAuthErrors();

@@ -653,35 +653,6 @@
     </div>
   </div>
 
-  <!-- SECURITY NOTIFICATION TOAST -->
-  <div id="email-security-toast" class="security-toast hidden" role="status" aria-live="polite">
-    <div class="security-toast-card">
-      <div class="toast-badge-row">
-        <div class="toast-badge">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-          <span>Security Code Dispatched</span>
-        </div>
-        <button type="button" id="close-security-toast-btn" class="toast-close-btn" aria-label="Close notification">&times;</button>
-      </div>
-      <div class="toast-email-row">
-        <span>To: <strong id="toast-recipient-email">user@gmail.com</strong></span>
-        <span class="toast-timer" id="toast-expiry-countdown">Valid for 10:00</span>
-      </div>
-      <div class="toast-code-row">
-        <div class="toast-code-box">
-          <span class="toast-code-label">SECURITY CODE:</span>
-          <span id="toast-display-code" class="toast-code-digits">000000</span>
-        </div>
-        <button type="button" id="toast-autofill-btn" class="pill-btn primary-pill btn-xs">
-          ⚡ Auto-Fill Code
-        </button>
-      </div>
-      <div class="toast-subtext">
-        <span>🛡️ Sent to your specific email address • Enter this code to reset password</span>
-      </div>
-    </div>
-  </div>
-
   <!-- AUTHENTICATION MODAL OVERLAY -->
   <div id="auth-modal" class="auth-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="auth-title">
     <div class="auth-glow auth-glow-1"></div>
@@ -873,7 +844,7 @@
               <div class="code-verify-badge">Security Code Verification</div>
               <span id="reset-resend-countdown" class="countdown-text"></span>
             </div>
-            <p class="code-verify-prompt">Enter the 6-digit security code sent to <strong id="reset-sent-email-display"></strong></p>
+            <p class="code-verify-prompt">📬 We have dispatched a 6-digit security code to <strong id="reset-sent-email-display"></strong>. Please check your Gmail inbox (and Spam folder), then enter the code below:</p>
             <div class="code-verify-input-group">
               <input type="text" id="reset-code-input" class="quick-input code-digit-input" placeholder="e.g. 749210" maxlength="6" inputmode="numeric" autocomplete="one-time-code" />
               <button type="button" id="reset-verify-btn" class="pill-btn secondary-pill btn-sm">Verify Code</button>
