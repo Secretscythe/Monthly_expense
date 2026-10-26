@@ -202,6 +202,28 @@ class SpendFlowHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=DIRECTORY, **kwargs)
 
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization')
+        self.send_header('Access-Control-Max-Age', '86400')
+        self.end_headers()
+
+    def do_GET(self):
+        if self.path == '/api/status':
+            load_env()
+            gmail_user = os.environ.get('GMAIL_USER', '').strip()
+            gmail_pass = os.environ.get('GMAIL_APP_PASSWORD', '').strip()
+            is_configured = bool(gmail_user and gmail_pass and 'your_email' not in gmail_user)
+            self._send_json(200, {
+                'status': 'online',
+                'configured': is_configured,
+                'email': gmail_user if is_configured else None
+            })
+            return
+        super().do_GET()
+
     def do_POST(self):
         if self.path == '/api/send-email':
             content_length = int(self.headers.get('Content-Length', 0))
@@ -233,6 +255,8 @@ class SpendFlowHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(payload)))
         self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization')
         self.end_headers()
         self.wfile.write(payload)
 

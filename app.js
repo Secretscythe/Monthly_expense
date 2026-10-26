@@ -648,7 +648,7 @@ const emailAuthService = {
     return Math.floor(100000 + Math.random() * 900000).toString();
   },
 
-  sendResetCode(email) {
+  async sendResetCode(email) {
     const trimmed = (email || '').trim().toLowerCase();
     const code = this.generateCode();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
@@ -661,40 +661,68 @@ const emailAuthService = {
       verified: false
     };
 
-    // Dispatch verification email to the user's Gmail address via backend SMTP
-    fetch('/api/send-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: trimmed, code: code })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
+    const statusEl = $('reset-code-status');
+    if (statusEl) {
+      statusEl.className = 'code-status-msg neutral';
+      statusEl.textContent = '🔄 Contacting SpendFlow email dispatcher...';
+    }
+
+    // Try candidate endpoints so it works whether opened via file://, http://localhost:3000, or a dev server
+    const endpoints = [];
+    if (window.location.protocol.startsWith('http') && window.location.port === '3000') {
+      endpoints.push('/api/send-email');
+    }
+    endpoints.push('http://localhost:3000/api/send-email');
+    endpoints.push('http://127.0.0.1:3000/api/send-email');
+
+    let responseData = null;
+    let networkError = null;
+
+    for (const url of endpoints) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: trimmed, code: code })
+        });
+        responseData = await res.json();
+        break;
+      } catch (err) {
+        networkError = err;
+      }
+    }
+
+    if (responseData) {
+      if (responseData.success) {
         showToast(`Verification code emailed to ${trimmed}! 📬 Check your inbox.`);
-        const statusEl = $('reset-code-status');
         if (statusEl) {
           statusEl.className = 'code-status-msg success';
-          statusEl.textContent = `✅ Email sent! Check your Gmail inbox (and spam folder) for the 6-digit code.`;
+          statusEl.textContent = `✅ Email sent to ${trimmed}! Check your Gmail inbox (and Spam folder) for the 6-digit code.`;
         }
       } else {
-        console.warn('[SpendFlow SMTP]', data.message);
-        showToast('⚠️ Email could not be sent: Gmail credentials not set in .env');
-        const statusEl = $('reset-code-status');
-        if (statusEl) {
-          statusEl.className = 'code-status-msg error';
-          statusEl.textContent = `⚠️ Email delivery paused: Please set your GMAIL_USER & GMAIL_APP_PASSWORD in the .env file.`;
+        console.warn('[SpendFlow SMTP]', responseData.message);
+        if (responseData.message && responseData.message.includes('credentials not configured')) {
+          showToast('⚠️ Gmail credentials required in .env file.');
+          if (statusEl) {
+            statusEl.className = 'code-status-msg error';
+            statusEl.textContent = '⚠️ Gmail credentials missing: Please enter your GMAIL_USER and GMAIL_APP_PASSWORD in the .env file.';
+          }
+        } else {
+          showToast('⚠️ Email delivery error: ' + (responseData.message || 'Check server logs'));
+          if (statusEl) {
+            statusEl.className = 'code-status-msg error';
+            statusEl.textContent = `⚠️ Email delivery error: ${responseData.message || 'SMTP Authentication failed'}.`;
+          }
         }
       }
-    })
-    .catch(err => {
-      console.warn('[SpendFlow SMTP Network Error]', err);
+    } else {
+      console.warn('[SpendFlow SMTP Network Error]', networkError);
       showToast('⚠️ Could not connect to local email server.');
-      const statusEl = $('reset-code-status');
       if (statusEl) {
         statusEl.className = 'code-status-msg error';
-        statusEl.textContent = '⚠️ Could not connect to email server endpoint.';
+        statusEl.textContent = '⚠️ Could not connect to email server at http://localhost:3000. Please ensure "python3 server.py" is running and open http://localhost:3000 in your browser.';
       }
-    });
+    }
 
     this.startCooldown();
     return code;
