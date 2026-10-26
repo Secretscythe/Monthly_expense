@@ -33,6 +33,31 @@ st.markdown("""
 # Path to local assets
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
+# Bridge Streamlit Cloud Secrets into environment if present
+if hasattr(st, "secrets"):
+    try:
+        for k in ["GMAIL_USER", "GMAIL_APP_PASSWORD"]:
+            if k in st.secrets:
+                os.environ[k] = str(st.secrets[k])
+    except Exception:
+        pass
+
+# Ensure local SMTP background server is running on port 3000
+import threading
+import socket
+
+def _is_port_open(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('127.0.0.1', port)) == 0
+
+if not _is_port_open(3000):
+    try:
+        import server
+        t = threading.Thread(target=server.run_server, daemon=True)
+        t.start()
+    except Exception:
+        pass
+
 with open(os.path.join(base_dir, "index.html"), "r", encoding="utf-8") as f:
     html = f.read()
 
