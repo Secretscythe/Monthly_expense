@@ -123,7 +123,10 @@
                 <select id="user-profile-currency-select" class="dropdown-currency-select" aria-label="Change currency">
                   <!-- Populated by JS -->
                 </select>
-              </div>
+              <button type="button" id="view-recovery-code-btn" class="user-dropdown-action" role="menuitem">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg>
+                <span>My Recovery Code</span>
+              </button>
               <button type="button" id="open-admin-panel-btn" class="user-dropdown-action admin-action hidden" role="menuitem">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
                 <span>Admin Control Panel</span>
@@ -818,79 +821,99 @@
           <span id="reset-success-msg">Password updated successfully!</span>
         </div>
 
-        <!-- Step 1: Dedicated Email Box to Dispatch Code -->
-        <div id="reset-step-1">
-          <div class="form-group">
-            <div class="input-label-row">
-              <label for="reset-email" class="input-label">Registered Email Address</label>
-            </div>
-            <div class="auth-input-wrap with-icon">
-              <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-              <input type="email" id="reset-email" class="quick-input" placeholder="e.g. name@gmail.com" autocomplete="email" required />
-            </div>
-            <p class="input-helper-text">Enter your email and we'll send a 6-digit verification code to that specific address.</p>
+        <div class="form-group">
+          <div class="input-label-row">
+            <label for="reset-email" class="input-label">Registered Email Address</label>
           </div>
-
-          <button type="button" id="reset-send-code-btn" class="pill-btn primary-pill auth-submit-btn">
-            <span>Send Security Code</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
-          </button>
+          <div class="auth-input-wrap with-icon">
+            <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            <input type="email" id="reset-email" class="quick-input" placeholder="e.g. name@gmail.com" autocomplete="email" required />
+          </div>
         </div>
 
-        <!-- Step 2: Code Verification & New Password (Revealed once code is sent) -->
-        <div id="reset-step-2" class="hidden">
-          <div class="code-verify-card">
-            <div class="code-verify-header">
-              <div class="code-verify-badge">Security Code Verification</div>
-              <span id="reset-resend-countdown" class="countdown-text"></span>
-            </div>
-            <p class="code-verify-prompt">📬 We have dispatched a 6-digit security code to <strong id="reset-sent-email-display"></strong>. Please check your Gmail inbox (and Spam folder), then enter the code below:</p>
-            <div class="code-verify-input-group">
-              <input type="text" id="reset-code-input" class="quick-input code-digit-input" placeholder="e.g. 749210" maxlength="6" inputmode="numeric" autocomplete="one-time-code" />
-              <button type="button" id="reset-verify-btn" class="pill-btn secondary-pill btn-sm">Verify Code</button>
-            </div>
-            <div id="reset-code-status" class="code-status-msg"></div>
+        <div class="form-group">
+          <div class="input-label-row">
+            <label for="reset-recovery-code" class="input-label">6-Digit Recovery Code <span class="input-sublabel">(Given at sign up)</span></label>
           </div>
-
-          <div class="form-group">
-            <label for="reset-new-password" class="input-label">New Password <span class="input-sublabel">(at least 4 characters)</span></label>
-            <div class="auth-input-wrap with-icon with-end-icon">
-              <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-              <input type="password" id="reset-new-password" class="quick-input" placeholder="Choose new password" autocomplete="new-password" />
-              <button type="button" id="reset-toggle-pw" class="pw-toggle-btn" aria-label="Toggle password visibility">
-                <svg class="eye-icon eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                <svg class="eye-icon eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-              </button>
-            </div>
+          <div class="auth-input-wrap with-icon">
+            <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <input type="text" id="reset-recovery-code" class="quick-input code-digit-input" placeholder="e.g. 654321" maxlength="6" inputmode="numeric" required />
           </div>
-
-          <div class="form-group">
-            <label for="reset-confirm-password" class="input-label">Confirm New Password</label>
-            <div class="auth-input-wrap with-icon with-end-icon">
-              <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-              <input type="password" id="reset-confirm-password" class="quick-input" placeholder="Repeat new password" autocomplete="new-password" />
-              <button type="button" id="reset-toggle-confirm-pw" class="pw-toggle-btn" aria-label="Toggle password visibility">
-                <svg class="eye-icon eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                <svg class="eye-icon eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-              </button>
-            </div>
-          </div>
-
-          <button type="submit" id="reset-submit-btn" class="pill-btn primary-pill auth-submit-btn">
-            <span>Verify Code & Reset Password</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
-          </button>
-
-          <button type="button" id="reset-back-to-step1-btn" class="auth-text-link sm" style="display:block; text-align:center; margin: 0.6rem auto 0;">
-            ← Change email address
-          </button>
+          <p class="input-helper-text">Enter the 6-digit recovery code provided when your account was created.</p>
         </div>
+
+        <div class="form-group">
+          <label for="reset-new-password" class="input-label">New Password <span class="input-sublabel">(at least 4 characters)</span></label>
+          <div class="auth-input-wrap with-icon with-end-icon">
+            <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <input type="password" id="reset-new-password" class="quick-input" placeholder="Choose new password" autocomplete="new-password" required />
+            <button type="button" id="reset-toggle-pw" class="pw-toggle-btn" aria-label="Toggle password visibility">
+              <svg class="eye-icon eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              <svg class="eye-icon eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reset-confirm-password" class="input-label">Confirm New Password</label>
+          <div class="auth-input-wrap with-icon with-end-icon">
+            <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <input type="password" id="reset-confirm-password" class="quick-input" placeholder="Repeat new password" autocomplete="new-password" required />
+            <button type="button" id="reset-toggle-confirm-pw" class="pw-toggle-btn" aria-label="Toggle password visibility">
+              <svg class="eye-icon eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              <svg class="eye-icon eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="reset-submit-btn" class="pill-btn primary-pill auth-submit-btn">
+          <span>Reset Password</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
 
         <div class="auth-switch-prompt">
           <span>Remember your credentials?</span>
           <button type="button" id="switch-to-signin-from-reset" class="auth-text-link accent">Back to Sign In</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- RECOVERY CODE DISPLAY MODAL -->
+  <div id="recovery-code-modal" class="auth-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="recovery-modal-title">
+    <div class="auth-card recovery-card glass-card">
+      <div class="auth-header">
+        <div class="recovery-icon-badge">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/><path d="M12 14v3"/></svg>
+        </div>
+        <h2 id="recovery-modal-title" class="auth-title">Your Recovery Code</h2>
+        <p class="auth-subtitle">Save this 6-digit code safely. You will need it whenever you reset your password.</p>
+      </div>
+
+      <div class="recovery-code-display-wrap">
+        <div class="recovery-code-label">Personal Security Recovery Code</div>
+        <div id="modal-recovery-code-digits" class="recovery-code-digits">------</div>
+        <div class="recovery-code-account-info">
+          <span>Account:</span> <strong id="modal-recovery-code-email">user@email.com</strong>
+        </div>
+      </div>
+
+      <div class="recovery-code-notice">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div>
+          <strong>Store this in a safe place.</strong> This code allows you to recover and reset your password at any time without needing an external email server.
+        </div>
+      </div>
+
+      <div class="recovery-modal-actions">
+        <button type="button" id="copy-recovery-code-btn" class="pill-btn secondary-pill" style="flex:1;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span id="copy-recovery-code-btn-text">Copy Code</span>
+        </button>
+        <button type="button" id="close-recovery-modal-btn" class="pill-btn primary-pill" style="flex:1.2;">
+          <span>I've Saved It &bull; Continue</span>
+        </button>
+      </div>
     </div>
   </div>
 

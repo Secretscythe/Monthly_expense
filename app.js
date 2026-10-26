@@ -170,6 +170,7 @@ const DEFAULT_USERS = [
     email: 'admin@spendflow.app',
     password: 'admin123',
     role: 'admin',
+    recoveryCode: '888999',
     createdAt: 1700000000000
   },
   {
@@ -178,6 +179,7 @@ const DEFAULT_USERS = [
     email: 'demo@spendflow.app',
     password: 'password123',
     role: 'member',
+    recoveryCode: '654321',
     createdAt: 1700000000000
   }
 ];
@@ -242,20 +244,13 @@ function clearAuthInputs() {
   const ids = [
     'signin-email', 'signin-password',
     'signup-name', 'signup-email', 'signup-password', 'signup-confirm-password',
-    'reset-email', 'reset-code-input', 'reset-new-password', 'reset-confirm-password'
+    'reset-email', 'reset-recovery-code', 'reset-new-password', 'reset-confirm-password'
   ];
   ids.forEach(id => {
     const el = $(id);
     if (el) el.value = '';
   });
   if ($('signup-email-status-pill')) $('signup-email-status-pill').classList.add('hidden');
-  if ($('reset-step-1')) $('reset-step-1').classList.remove('hidden');
-  if ($('reset-step-2')) $('reset-step-2').classList.add('hidden');
-  if ($('reset-code-status')) {
-    $('reset-code-status').textContent = '';
-    $('reset-code-status').className = 'code-status-msg';
-  }
-  hideSecurityToast();
 }
 
 function getUserStorageKey(suffix) {
@@ -286,8 +281,24 @@ function getRegisteredUsers() {
   try {
     const stored = JSON.parse(storage.getItem(AUTH_USERS_KEY));
     if (Array.isArray(stored) && stored.length > 0) {
+      let modified = false;
       if (!stored.some(u => u.id === 'user_admin' || u.email === 'admin@spendflow.app')) {
         stored.unshift(DEFAULT_USERS[0]);
+        modified = true;
+      }
+      stored.forEach(u => {
+        if (!u.recoveryCode) {
+          if (u.id === 'user_admin' || u.email === 'admin@spendflow.app') {
+            u.recoveryCode = '888999';
+          } else if (u.id === 'user_demo' || u.email === 'demo@spendflow.app') {
+            u.recoveryCode = '654321';
+          } else {
+            u.recoveryCode = Math.floor(100000 + Math.random() * 900000).toString();
+          }
+          modified = true;
+        }
+      });
+      if (modified) {
         storage.setItem(AUTH_USERS_KEY, JSON.stringify(stored));
       }
       return stored;
@@ -405,7 +416,7 @@ function switchAuthTab(mode) {
   if (sub) {
     if (isSignIn) sub.textContent = 'Sign in to access your personal finances and budget records';
     else if (isSignUp) sub.textContent = 'Create an account to start tracking your expenses & income';
-    else if (isReset) sub.textContent = 'Enter your email to receive a security verification code';
+    else if (isReset) sub.textContent = 'Enter your email and 6-digit recovery code to reset password';
   }
 
   hideAuthErrors();
@@ -589,12 +600,14 @@ function handleSignUp(name, emailOrUsername, password, confirmPassword, preloadS
     return;
   }
 
+  const recoveryCode = Math.floor(100000 + Math.random() * 900000).toString();
   const newUser = {
     id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     name: n,
     email: lowerIdent,
     password: pwd,
     role: 'member',
+    recoveryCode: recoveryCode,
     createdAt: Date.now()
   };
 
@@ -630,234 +643,37 @@ function handleSignUp(name, emailOrUsername, password, confirmPassword, preloadS
   }
 
   clearAuthInputs();
+  closeAuthModal();
   setActiveSession(newUser, true);
   applyUserLogin(newUser, false);
   showToast(`Account created! Welcome, ${newUser.name} 🎉`);
+  showRecoveryCodeModal(newUser.email, recoveryCode);
 }
 
 // ========================================================
-// EMAIL DISPATCH & CODE VERIFICATION SERVICE (FOR RESET)
+// 6-DIGIT PERSONAL RECOVERY CODE MODAL & RESET HANDLERS
 // ========================================================
 
-const emailAuthService = {
-  verification: null,
-  cooldownTimer: null,
-  cooldownRemaining: 0,
-
-  generateCode() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  },
-
-  async sendResetCode(email) {
-    const trimmed = (email || '').trim().toLowerCase();
-    const code = this.generateCode();
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
-
-    this.verification = {
-      email: trimmed,
-      code,
-      type: 'reset',
-      expiresAt,
-      verified: false
-    };
-
-    const statusEl = $('reset-code-status');
-    if (statusEl) {
-      statusEl.className = 'code-status-msg neutral';
-      statusEl.textContent = '🔄 Contacting SpendFlow email dispatcher...';
-    }
-
-    // Try candidate endpoints so it works whether opened via file://, http://localhost:3000, or a dev server
-    const endpoints = [];
-    if (window.location.protocol.startsWith('http') && window.location.port === '3000') {
-      endpoints.push('/api/send-email');
-    }
-    endpoints.push('http://localhost:3000/api/send-email');
-    endpoints.push('http://127.0.0.1:3000/api/send-email');
-
-    let responseData = null;
-    let networkError = null;
-
-    for (const url of endpoints) {
-      try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to: trimmed, code: code })
-        });
-        responseData = await res.json();
-        break;
-      } catch (err) {
-        networkError = err;
-      }
-    }
-
-    if (responseData) {
-      if (responseData.success) {
-        showToast(`Verification code emailed to ${trimmed}! 📬 Check your inbox.`);
-        if (statusEl) {
-          statusEl.className = 'code-status-msg success';
-          statusEl.textContent = `✅ Email sent to ${trimmed}! Check your Gmail inbox (and Spam folder) for the 6-digit code.`;
-        }
-      } else {
-        console.warn('[SpendFlow SMTP]', responseData.message);
-        if (responseData.message && responseData.message.includes('credentials not configured')) {
-          showToast('⚠️ Gmail credentials required in .env file.');
-          if (statusEl) {
-            statusEl.className = 'code-status-msg error';
-            statusEl.textContent = '⚠️ Gmail credentials missing: Please enter your GMAIL_USER and GMAIL_APP_PASSWORD in the .env file.';
-          }
-        } else {
-          showToast('⚠️ Email delivery error: ' + (responseData.message || 'Check server logs'));
-          if (statusEl) {
-            statusEl.className = 'code-status-msg error';
-            statusEl.textContent = `⚠️ Email delivery error: ${responseData.message || 'SMTP Authentication failed'}.`;
-          }
-        }
-      }
-    } else {
-      console.warn('[SpendFlow SMTP Network Error]', networkError);
-      showToast('⚠️ Could not connect to local email server.');
-      if (statusEl) {
-        statusEl.className = 'code-status-msg error';
-        statusEl.textContent = '⚠️ Could not connect to email server at http://localhost:3000. Please ensure "python3 server.py" is running and open http://localhost:3000 in your browser.';
-      }
-    }
-
-    this.startCooldown();
-    return code;
-  },
-
-  startCooldown() {
-    this.cooldownRemaining = 60;
-    if (this.cooldownTimer) clearInterval(this.cooldownTimer);
-
-    const updateCountdown = () => {
-      const countdownEl = $('reset-resend-countdown');
-      if (this.cooldownRemaining > 0) {
-        if (countdownEl) countdownEl.textContent = `Resend in ${this.cooldownRemaining}s`;
-        this.cooldownRemaining--;
-      } else {
-        clearInterval(this.cooldownTimer);
-        this.cooldownTimer = null;
-        if (countdownEl) countdownEl.textContent = '';
-      }
-    };
-
-    updateCountdown();
-    this.cooldownTimer = setInterval(updateCountdown, 1000);
-  },
-
-  verifyResetCode(email, enteredCode) {
-    const trimmedEmail = (email || '').trim().toLowerCase();
-    const trimmedCode = (enteredCode || '').trim();
-
-    if (!this.verification || this.verification.type !== 'reset' || this.verification.email !== trimmedEmail) {
-      return { success: false, message: 'Please request a verification code for this email first.' };
-    }
-
-    if (Date.now() > this.verification.expiresAt) {
-      return { success: false, message: 'Verification code has expired. Please request a new code.' };
-    }
-
-    if (this.verification.code !== trimmedCode) {
-      return { success: false, message: 'Invalid verification code. Please check your email and try again.' };
-    }
-
-    this.verification.verified = true;
-    return { success: true, message: '✅ Security code verified! Enter your new password below.' };
-  },
-
-  isResetVerified(email) {
-    const trimmed = (email || '').trim().toLowerCase();
-    return (
-      this.verification &&
-      this.verification.type === 'reset' &&
-      this.verification.email === trimmed &&
-      this.verification.verified &&
-      Date.now() <= this.verification.expiresAt
-    );
-  }
-};
-
-function showSecurityToast() {}
-function hideSecurityToast() {}
-
-function handleResetSendCode() {
-  hideAuthErrors();
-  const email = ($('reset-email') ? $('reset-email').value : '').trim();
-  if (!email) {
-    showResetError('Please enter your registered email address.');
-    if ($('reset-email')) $('reset-email').focus();
-    return;
-  }
-  const emailCheck = validateEmailDetailed(email);
-  if (!emailCheck.valid) {
-    showResetError(emailCheck.error);
-    if ($('reset-email')) $('reset-email').focus();
-    return;
-  }
-
-  const users = getRegisteredUsers();
-  const lowerEmail = email.toLowerCase();
-  const user = users.find(u =>
-    (u.email && u.email.toLowerCase() === lowerEmail) ||
-    (u.name && u.name.toLowerCase() === lowerEmail) ||
-    (u.id === 'user_demo' && lowerEmail === 'demo@spendflow.app') ||
-    (u.id === 'user_admin' && lowerEmail === 'admin@spendflow.app')
-  );
-
-  if (!user) {
-    showResetError('No account found with this email address. Please check your spelling or create an account.');
-    if ($('reset-email')) $('reset-email').focus();
-    return;
-  }
-
-  const targetEmail = user.email ? user.email.toLowerCase() : lowerEmail;
-
-  // Reveal Step 2 and send security code to that specific email
-  if ($('reset-step-1')) $('reset-step-1').classList.add('hidden');
-  if ($('reset-step-2')) $('reset-step-2').classList.remove('hidden');
-  if ($('reset-sent-email-display')) $('reset-sent-email-display').textContent = targetEmail;
-
-  emailAuthService.sendResetCode(targetEmail);
-  if ($('reset-code-input')) $('reset-code-input').focus();
+function showRecoveryCodeModal(email, code) {
+  if ($('modal-recovery-code-digits')) $('modal-recovery-code-digits').textContent = code;
+  if ($('modal-recovery-code-email')) $('modal-recovery-code-email').textContent = email;
+  const btnText = $('copy-recovery-code-btn-text');
+  if (btnText) btnText.textContent = 'Copy Code';
+  if ($('recovery-code-modal')) $('recovery-code-modal').classList.remove('hidden');
+  document.body.classList.add('auth-modal-open');
 }
 
-function handleVerifyResetCode() {
-  const email = ($('reset-email') ? $('reset-email').value : '').trim();
-  const code = ($('reset-code-input') ? $('reset-code-input').value : '').trim();
-  const statusMsg = $('reset-code-status');
-
-  if (!code) {
-    if (statusMsg) {
-      statusMsg.className = 'code-status-msg error';
-      statusMsg.textContent = 'Please enter the 6-digit security code.';
-    }
-    return false;
+function closeRecoveryCodeModal() {
+  if ($('recovery-code-modal')) $('recovery-code-modal').classList.add('hidden');
+  if (!$('auth-modal') || $('auth-modal').classList.contains('hidden')) {
+    document.body.classList.remove('auth-modal-open');
   }
-
-  const users = getRegisteredUsers();
-  const lower = email.toLowerCase();
-  const user = users.find(u =>
-    (u.email && u.email.toLowerCase() === lower) ||
-    (u.name && u.name.toLowerCase() === lower) ||
-    (u.id === 'user_demo' && lower === 'demo@spendflow.app') ||
-    (u.id === 'user_admin' && lower === 'admin@spendflow.app')
-  );
-  const targetEmail = user && user.email ? user.email.toLowerCase() : lower;
-
-  const res = emailAuthService.verifyResetCode(targetEmail, code);
-  if (statusMsg) {
-    statusMsg.className = `code-status-msg ${res.success ? 'success' : 'error'}`;
-    statusMsg.textContent = res.message;
-  }
-  return res.success;
 }
 
-function handleResetPassword(emailOrUsername, newPassword, confirmPassword) {
+function handleResetPassword(emailOrUsername, recoveryCode, newPassword, confirmPassword) {
   hideAuthErrors();
   const ident = (emailOrUsername || '').trim();
+  const code = (recoveryCode || '').trim();
   const pwd = (newPassword || '').trim();
   const cpwd = (confirmPassword || '').trim();
 
@@ -877,27 +693,23 @@ function handleResetPassword(emailOrUsername, newPassword, confirmPassword) {
   );
 
   if (!user) {
-    showResetError('No account found with this email.');
+    showResetError('No account found with this email address. Please check your spelling or sign up.');
     if ($('reset-email')) $('reset-email').focus();
     return;
   }
 
-  const targetEmail = user.email ? user.email.toLowerCase() : lowerIdent;
+  if (!code) {
+    showResetError('Please enter your 6-digit recovery code.');
+    if ($('reset-recovery-code')) $('reset-recovery-code').focus();
+    return;
+  }
 
-  // Security check: Must verify code sent to this email address
-  if (!emailAuthService.isResetVerified(targetEmail)) {
-    const codeEntered = ($('reset-code-input') ? $('reset-code-input').value : '').trim();
-    if (!codeEntered) {
-      showResetError('Security code required: Enter the 6-digit code sent to your email.');
-      if ($('reset-code-input')) $('reset-code-input').focus();
-      return;
-    }
-    const verified = handleVerifyResetCode();
-    if (!verified) {
-      showResetError('Invalid security verification code. Please check your email and try again.');
-      if ($('reset-code-input')) $('reset-code-input').focus();
-      return;
-    }
+  // Verify the entered recovery code matches the user's stored recoveryCode
+  const expectedCode = String(user.recoveryCode || '').trim();
+  if (code !== expectedCode) {
+    showResetError('❌ Invalid recovery code. Please enter the 6-digit code provided when you created your account.');
+    if ($('reset-recovery-code')) $('reset-recovery-code').focus();
+    return;
   }
 
   if (!pwd || pwd.length < 4) {
@@ -906,23 +718,34 @@ function handleResetPassword(emailOrUsername, newPassword, confirmPassword) {
     return;
   }
   if (pwd !== cpwd) {
-    showResetError('Passwords do not match. Please verify.');
+    showResetError('New passwords do not match. Please verify.');
     if ($('reset-confirm-password')) $('reset-confirm-password').focus();
     return;
   }
 
+  // Update password in storage
   user.password = pwd;
   saveRegisteredUsers(users);
 
-  if ($('reset-success-alert')) $('reset-success-alert').classList.remove('hidden');
-  hideSecurityToast();
+  // If this was current session, update it
+  if (state.currentUser && state.currentUser.id === user.id) {
+    state.currentUser.password = pwd;
+  }
+
+  showToast('Password updated successfully! 🎉 You can now sign in.');
+  const successAlert = $('reset-success-alert');
+  if (successAlert) {
+    successAlert.classList.remove('hidden');
+    const msg = $('reset-success-msg');
+    if (msg) msg.textContent = 'Password reset successfully! Redirecting to sign in...';
+  }
 
   setTimeout(() => {
-    clearAuthInputs();
-    showToast(`Password updated! Logging you in as ${user.name}... 🔑`);
-    setActiveSession(user, true);
-    applyUserLogin(user, true);
-  }, 750);
+    switchAuthTab('signin');
+    if ($('signin-email')) $('signin-email').value = user.email || lowerIdent;
+    if ($('signin-password')) $('signin-password').focus();
+    if (successAlert) successAlert.classList.add('hidden');
+  }, 1200);
 }
 
 function handleSignOut() {
@@ -3081,9 +2904,12 @@ function renderAdminUsersTable() {
               ${isCur ? ' <span style="font-size: 0.68rem; color: #a5b4fc;">(You)</span>' : ''}
             </div>
           </div>
-        </td>
-        <td><code>${escapeHTML(u.email)}</code></td>
         <td>
+          <code>${escapeHTML(u.email)}</code>
+          <div style="font-size: 0.68rem; color: #818cf8; margin-top: 3px;">
+            Recovery: <strong style="letter-spacing: 0.05em; color: #c7d2fe;">${u.recoveryCode || 'None'}</strong>
+          </div>
+        </td>
           <span class="user-role-badge ${u.role === 'admin' ? 'admin' : ''}">${u.role === 'admin' ? '👑 Admin' : 'Member'}</span>
         </td>
         <td>${joined}</td>
@@ -3253,56 +3079,55 @@ function initAuthEvents() {
     $('signup-email').addEventListener('blur', handleSignUpEmailCheck);
   }
 
-  if ($('close-security-toast-btn')) {
-    $('close-security-toast-btn').addEventListener('click', hideSecurityToast);
-  }
-
-  if ($('reset-send-code-btn')) {
-    $('reset-send-code-btn').addEventListener('click', handleResetSendCode);
-  }
-
-  if ($('reset-email')) {
-    $('reset-email').addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleResetSendCode();
-      }
-    });
-  }
-
-  if ($('reset-verify-btn')) {
-    $('reset-verify-btn').addEventListener('click', handleVerifyResetCode);
-  }
-
-  if ($('reset-code-input')) {
-    $('reset-code-input').addEventListener('input', e => {
-      if (e.target.value.trim().length === 6) {
-        handleVerifyResetCode();
-      }
-    });
-  }
-
-  if ($('reset-back-to-step1-btn')) {
-    $('reset-back-to-step1-btn').addEventListener('click', () => {
-      if ($('reset-step-1')) $('reset-step-1').classList.remove('hidden');
-      if ($('reset-step-2')) $('reset-step-2').classList.add('hidden');
-      if ($('reset-email')) $('reset-email').focus();
-    });
-  }
-
   if ($('reset-form')) {
     $('reset-form').addEventListener('submit', e => {
       e.preventDefault();
-      // If Step 1 is active, pressing Enter or submitting should request the security code
-      const step2 = $('reset-step-2');
-      if (!step2 || step2.classList.contains('hidden')) {
-        handleResetSendCode();
-        return;
-      }
       const email = $('reset-email') ? $('reset-email').value : '';
+      const recoveryCode = $('reset-recovery-code') ? $('reset-recovery-code').value : '';
       const newPw = $('reset-new-password') ? $('reset-new-password').value : '';
       const confirmPw = $('reset-confirm-password') ? $('reset-confirm-password').value : '';
-      handleResetPassword(email, newPw, confirmPw);
+      handleResetPassword(email, recoveryCode, newPw, confirmPw);
+    });
+  }
+
+  if ($('close-recovery-modal-btn')) {
+    $('close-recovery-modal-btn').addEventListener('click', closeRecoveryCodeModal);
+  }
+
+  if ($('copy-recovery-code-btn')) {
+    $('copy-recovery-code-btn').addEventListener('click', () => {
+      const code = $('modal-recovery-code-digits') ? $('modal-recovery-code-digits').textContent.trim() : '';
+      if (code && code !== '------') {
+        navigator.clipboard.writeText(code).then(() => {
+          const btnText = $('copy-recovery-code-btn-text');
+          if (btnText) btnText.textContent = 'Copied! ✓';
+          showToast('Recovery code copied to clipboard! 📋 Keep it safe.');
+          setTimeout(() => {
+            if (btnText) btnText.textContent = 'Copy Code';
+          }, 2500);
+        }).catch(() => {
+          showToast(`Recovery Code: ${code}`);
+        });
+      }
+    });
+  }
+
+  if ($('view-recovery-code-btn')) {
+    $('view-recovery-code-btn').addEventListener('click', () => {
+      closeUserDropdown();
+      if (state.currentUser) {
+        if (!state.currentUser.recoveryCode) {
+          const code = Math.floor(100000 + Math.random() * 900000).toString();
+          state.currentUser.recoveryCode = code;
+          const users = getRegisteredUsers();
+          const u = users.find(x => x.id === state.currentUser.id);
+          if (u) {
+            u.recoveryCode = code;
+            saveRegisteredUsers(users);
+          }
+        }
+        showRecoveryCodeModal(state.currentUser.email, state.currentUser.recoveryCode);
+      }
     });
   }
 
