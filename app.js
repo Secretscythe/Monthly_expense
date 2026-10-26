@@ -670,15 +670,30 @@ const emailAuthService = {
     .then(res => res.json())
     .then(data => {
       if (data.success) {
-        showToast(`Verification code sent to ${trimmed}! 📬 Check your email.`);
+        showToast(`Verification code emailed to ${trimmed}! 📬 Check your inbox.`);
+        const statusEl = $('reset-code-status');
+        if (statusEl) {
+          statusEl.className = 'code-status-msg success';
+          statusEl.textContent = `✅ Email sent! Check your Gmail inbox (and spam folder) for the 6-digit code.`;
+        }
       } else {
         console.warn('[SpendFlow SMTP]', data.message);
-        showToast(`Security code dispatched to ${trimmed}! 📬`);
+        showToast('⚠️ Email could not be sent: Gmail credentials not set in .env');
+        const statusEl = $('reset-code-status');
+        if (statusEl) {
+          statusEl.className = 'code-status-msg error';
+          statusEl.textContent = `⚠️ Email delivery paused: Please set your GMAIL_USER & GMAIL_APP_PASSWORD in the .env file.`;
+        }
       }
     })
     .catch(err => {
       console.warn('[SpendFlow SMTP Network Error]', err);
-      showToast(`Security code dispatched to ${trimmed}! 📬`);
+      showToast('⚠️ Could not connect to local email server.');
+      const statusEl = $('reset-code-status');
+      if (statusEl) {
+        statusEl.className = 'code-status-msg error';
+        statusEl.textContent = '⚠️ Could not connect to email server endpoint.';
+      }
     });
 
     this.startCooldown();
