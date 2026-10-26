@@ -401,6 +401,13 @@ function switchAuthTab(mode) {
   if ($('signup-form')) $('signup-form').classList.toggle('hidden', !isSignUp);
   if ($('reset-form')) $('reset-form').classList.toggle('hidden', !isReset);
 
+  const sub = $('auth-subtitle');
+  if (sub) {
+    if (isSignIn) sub.textContent = 'Sign in to access your personal finances and budget records';
+    else if (isSignUp) sub.textContent = 'Create an account to start tracking your expenses & income';
+    else if (isReset) sub.textContent = 'Enter your email to receive a security verification code';
+  }
+
   hideAuthErrors();
   clearAuthInputs();
 

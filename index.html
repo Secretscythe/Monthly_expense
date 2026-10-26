@@ -779,7 +779,11 @@
           <label for="signup-name" class="input-label">Full Name or Nickname</label>
           <div class="auth-input-wrap with-icon">
             <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            <input type="text" id="signup-name" class="quick-input" placeholder="e.g. Alex Morgan" au        <div class="form-group">
+            <input type="text" id="signup-name" class="quick-input" placeholder="e.g. Alex Morgan" autocomplete="name" required />
+          </div>
+        </div>
+
+        <div class="form-group">
           <div class="input-label-row">
             <label for="signup-email" class="input-label">Email Address <span class="input-sublabel">(e.g. user@gmail.com)</span></label>
             <span id="signup-email-status-pill" class="status-pill hidden"></span>
