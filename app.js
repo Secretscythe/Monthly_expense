@@ -182,8 +182,60 @@ const DEFAULT_USERS = [
   }
 ];
 
+const POPULAR_DOMAIN_TYPOS = {
+  'gmail.co': 'gmail.com',
+  'gmail.con': 'gmail.com',
+  'gmail.cm': 'gmail.com',
+  'gmai.com': 'gmail.com',
+  'gmaill.com': 'gmail.com',
+  'gmil.com': 'gmail.com',
+  'gmal.com': 'gmail.com',
+  'yahoo.co': 'yahoo.com',
+  'yahoo.con': 'yahoo.com',
+  'yaho.com': 'yahoo.com',
+  'yaho.co': 'yahoo.com',
+  'hotmail.co': 'hotmail.com',
+  'hotmail.con': 'hotmail.com',
+  'hotmial.com': 'hotmail.com',
+  'outlook.co': 'outlook.com',
+  'outlook.con': 'outlook.com',
+  'outlok.com': 'outlook.com',
+  'icloud.co': 'icloud.com',
+  'icloud.con': 'icloud.com'
+};
+
+function validateEmailDetailed(email) {
+  const str = String(email || '').trim().toLowerCase();
+  if (!str) {
+    return { valid: false, error: 'Email cannot be empty.' };
+  }
+  const basicRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  if (!basicRegex.test(str)) {
+    return { valid: false, error: 'Please enter a valid email address format (e.g. name@gmail.com).' };
+  }
+  const parts = str.split('@');
+  if (parts.length !== 2) {
+    return { valid: false, error: 'Please enter a valid email address format.' };
+  }
+  const domain = parts[1];
+  if (POPULAR_DOMAIN_TYPOS[domain]) {
+    const suggestion = `${parts[0]}@${POPULAR_DOMAIN_TYPOS[domain]}`;
+    return {
+      valid: false,
+      error: `Invalid domain "${domain}". Did you mean @${POPULAR_DOMAIN_TYPOS[domain]}?`,
+      suggestion
+    };
+  }
+  const domainParts = domain.split('.');
+  const tld = domainParts[domainParts.length - 1];
+  if (!/^[a-zA-Z]{2,24}$/.test(tld)) {
+    return { valid: false, error: `Invalid top-level domain ".${tld}".` };
+  }
+  return { valid: true, error: null };
+}
+
 function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim());
+  return validateEmailDetailed(email).valid;
 }
 
 function clearAuthInputs() {
@@ -448,11 +500,13 @@ function handleSignUpEmailCheck() {
     if (statusPill) statusPill.classList.add('hidden');
     return;
   }
-  if (!isValidEmail(email)) {
+  const check = validateEmailDetailed(email);
+  if (!check.valid) {
     if (statusPill) {
       statusPill.classList.remove('hidden');
       statusPill.className = 'status-pill occupied';
-      statusPill.textContent = 'Invalid format';
+      statusPill.textContent = check.suggestion ? 'Typo in domain' : 'Invalid format';
+      statusPill.title = check.error;
     }
     return;
   }
@@ -469,9 +523,11 @@ function handleSignUpEmailCheck() {
     if (occupied) {
       statusPill.className = 'status-pill occupied';
       statusPill.textContent = 'Already in use';
+      statusPill.title = 'An account with this email already exists';
     } else {
       statusPill.className = 'status-pill available';
       statusPill.textContent = 'Available';
+      statusPill.title = 'Email is available';
     }
   }
 }
@@ -493,8 +549,9 @@ function handleSignUp(name, emailOrUsername, password, confirmPassword, preloadS
     if ($('signup-email')) $('signup-email').focus();
     return;
   }
-  if (!isValidEmail(ident)) {
-    showSignUpError('Please enter a valid email address format (e.g. name@gmail.com).');
+  const emailCheck = validateEmailDetailed(ident);
+  if (!emailCheck.valid) {
+    showSignUpError(emailCheck.error);
     if ($('signup-email')) $('signup-email').focus();
     return;
   }
@@ -690,8 +747,9 @@ function handleResetSendCode() {
     if ($('reset-email')) $('reset-email').focus();
     return;
   }
-  if (!isValidEmail(email)) {
-    showResetError('Please enter a valid email address format (e.g. name@gmail.com).');
+  const emailCheck = validateEmailDetailed(email);
+  if (!emailCheck.valid) {
+    showResetError(emailCheck.error);
     if ($('reset-email')) $('reset-email').focus();
     return;
   }
@@ -711,12 +769,14 @@ function handleResetSendCode() {
     return;
   }
 
+  const targetEmail = user.email ? user.email.toLowerCase() : lowerEmail;
+
   // Reveal Step 2 and send security code to that specific email
   if ($('reset-step-1')) $('reset-step-1').classList.add('hidden');
   if ($('reset-step-2')) $('reset-step-2').classList.remove('hidden');
-  if ($('reset-sent-email-display')) $('reset-sent-email-display').textContent = email;
+  if ($('reset-sent-email-display')) $('reset-sent-email-display').textContent = targetEmail;
 
-  emailAuthService.sendResetCode(email);
+  emailAuthService.sendResetCode(targetEmail);
   if ($('reset-code-input')) $('reset-code-input').focus();
 }
 
@@ -733,7 +793,17 @@ function handleVerifyResetCode() {
     return false;
   }
 
-  const res = emailAuthService.verifyResetCode(email, code);
+  const users = getRegisteredUsers();
+  const lower = email.toLowerCase();
+  const user = users.find(u =>
+    (u.email && u.email.toLowerCase() === lower) ||
+    (u.name && u.name.toLowerCase() === lower) ||
+    (u.id === 'user_demo' && lower === 'demo@spendflow.app') ||
+    (u.id === 'user_admin' && lower === 'admin@spendflow.app')
+  );
+  const targetEmail = user && user.email ? user.email.toLowerCase() : lower;
+
+  const res = emailAuthService.verifyResetCode(targetEmail, code);
   if (statusMsg) {
     statusMsg.className = `code-status-msg ${res.success ? 'success' : 'error'}`;
     statusMsg.textContent = res.message;
@@ -753,8 +823,25 @@ function handleResetPassword(emailOrUsername, newPassword, confirmPassword) {
     return;
   }
 
+  const users = getRegisteredUsers();
+  const lowerIdent = ident.toLowerCase();
+  const user = users.find(u =>
+    (u.email && u.email.toLowerCase() === lowerIdent) ||
+    (u.name && u.name.toLowerCase() === lowerIdent) ||
+    (u.id === 'user_demo' && lowerIdent === 'demo@spendflow.app') ||
+    (u.id === 'user_admin' && lowerIdent === 'admin@spendflow.app')
+  );
+
+  if (!user) {
+    showResetError('No account found with this email.');
+    if ($('reset-email')) $('reset-email').focus();
+    return;
+  }
+
+  const targetEmail = user.email ? user.email.toLowerCase() : lowerIdent;
+
   // Security check: Must verify code sent to this email address
-  if (!emailAuthService.isResetVerified(ident)) {
+  if (!emailAuthService.isResetVerified(targetEmail)) {
     const codeEntered = ($('reset-code-input') ? $('reset-code-input').value : '').trim();
     if (!codeEntered) {
       showResetError('Security code required: Enter the 6-digit code sent to your email.');
@@ -777,21 +864,6 @@ function handleResetPassword(emailOrUsername, newPassword, confirmPassword) {
   if (pwd !== cpwd) {
     showResetError('Passwords do not match. Please verify.');
     if ($('reset-confirm-password')) $('reset-confirm-password').focus();
-    return;
-  }
-
-  const users = getRegisteredUsers();
-  const lowerIdent = ident.toLowerCase();
-  const user = users.find(u =>
-    (u.email && u.email.toLowerCase() === lowerIdent) ||
-    (u.name && u.name.toLowerCase() === lowerIdent) ||
-    (u.id === 'user_demo' && lowerIdent === 'demo@spendflow.app') ||
-    (u.id === 'user_admin' && lowerIdent === 'admin@spendflow.app')
-  );
-
-  if (!user) {
-    showResetError('No account found with this email.');
-    if ($('reset-email')) $('reset-email').focus();
     return;
   }
 
@@ -3110,14 +3182,6 @@ function initAuthEvents() {
     });
   }
 
-  if ($('quick-admin-login-btn')) {
-    $('quick-admin-login-btn').addEventListener('click', () => {
-      if ($('signin-email')) $('signin-email').value = 'admin@spendflow.app';
-      if ($('signin-password')) $('signin-password').value = 'admin123';
-      handleSignIn('admin@spendflow.app', 'admin123', true);
-    });
-  }
-
   if ($('signin-form')) {
     $('signin-form').addEventListener('submit', e => {
       e.preventDefault();
@@ -3185,6 +3249,12 @@ function initAuthEvents() {
   if ($('reset-form')) {
     $('reset-form').addEventListener('submit', e => {
       e.preventDefault();
+      // If Step 1 is active, pressing Enter or submitting should request the security code
+      const step2 = $('reset-step-2');
+      if (!step2 || step2.classList.contains('hidden')) {
+        handleResetSendCode();
+        return;
+      }
       const email = $('reset-email') ? $('reset-email').value : '';
       const newPw = $('reset-new-password') ? $('reset-new-password').value : '';
       const confirmPw = $('reset-confirm-password') ? $('reset-confirm-password').value : '';
