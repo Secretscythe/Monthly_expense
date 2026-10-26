@@ -104,7 +104,12 @@
           <!-- Dropdown menu -->
           <div id="user-dropdown-menu" class="user-dropdown-menu hidden" role="menu">
             <div class="user-dropdown-header">
-              <div id="dropdown-user-avatar" class="user-avatar lg">DU</div>
+              <div class="user-avatar-wrap" id="user-avatar-wrap" title="Change Profile Picture" role="button" tabindex="0">
+                <div id="dropdown-user-avatar" class="user-avatar lg">DU</div>
+                <div class="avatar-edit-badge" title="Change Profile Picture">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                </div>
+              </div>
               <div class="user-dropdown-info">
                 <div class="dropdown-name-row">
                   <div id="dropdown-user-name" class="dropdown-user-name">Demo User</div>
@@ -128,6 +133,10 @@
 
             <div class="user-dropdown-divider"></div>
             <div class="user-dropdown-items">
+              <button type="button" id="open-avatar-modal-btn" class="user-dropdown-action" role="menuitem">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                <span>Change Profile Picture</span>
+              </button>
               <div class="user-dropdown-currency-row">
                 <div class="currency-row-label">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M15 9.5a3.5 3.5 0 0 0-7 0c0 4 7 2 7 6a3.5 3.5 0 0 1-7 0"/></svg>
@@ -928,6 +937,70 @@
         <button type="button" id="close-recovery-modal-btn" class="pill-btn primary-pill" style="flex:1.2;">
           <span>I've Saved It &bull; Continue</span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE PICTURE / AVATAR MODAL -->
+  <div id="avatar-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="avatar-modal-title">
+    <div class="modal-dialog glass-card avatar-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon-badge">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </div>
+          <div>
+            <h2 id="avatar-modal-title" class="modal-title">Profile Picture</h2>
+            <p class="modal-subtitle">Upload a photo from your device or choose an avatar icon</p>
+          </div>
+        </div>
+        <button type="button" id="close-avatar-modal-btn" class="modal-close-btn" aria-label="Close avatar modal">✕</button>
+      </div>
+
+      <div class="avatar-modal-body">
+        <!-- Current Avatar Preview & Upload Action -->
+        <div class="avatar-preview-section">
+          <div class="avatar-preview-wrap">
+            <div id="modal-avatar-preview" class="user-avatar xl">DU</div>
+            <button type="button" id="trigger-avatar-upload-btn" class="avatar-camera-btn" title="Upload new photo">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </button>
+          </div>
+          <div class="avatar-upload-controls">
+            <input type="file" id="avatar-file-input" accept="image/png, image/jpeg, image/webp, image/gif" class="hidden" />
+            <button type="button" id="choose-avatar-file-btn" class="pill-btn primary-pill btn-sm">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span>Upload Photo</span>
+            </button>
+            <button type="button" id="remove-avatar-btn" class="pill-btn secondary-pill btn-sm text-danger" title="Remove photo and use initials">
+              <span>Reset to Initials</span>
+            </button>
+          </div>
+          <div class="avatar-upload-hint">Supports JPG, PNG, WEBP, or GIF (auto-resized for fast loading)</div>
+        </div>
+
+        <div class="avatar-divider"><span>OR CHOOSE AN AVATAR</span></div>
+
+        <!-- Preset Avatar Icon Grid -->
+        <div class="avatar-presets-grid" id="avatar-presets-grid">
+          <button type="button" class="avatar-preset-btn" data-avatar="🦊" title="Fox">🦊</button>
+          <button type="button" class="avatar-preset-btn" data-avatar="🦁" title="Lion">🦁</button>
+          <button type="button" class="avatar-preset-btn" data-avatar="🐼" title="Panda">🐼</button>
+          <button type="button" class="avatar-preset-btn" data-avatar="🦉" title="Owl">🦉</button>
+          <button type="button" class="avatar-preset-btn" data-avatar="🚀" title="Rocket">🚀</button>
+          <button type="button" class="avatar-preset-btn" data-avatar="💎" title="Diamond">💎</button>
+          <button type="button" class="avatar-preset-btn" data-avatar="👑" title="Crown">👑</button>
+          <button type="button" class="avatar-preset-btn" data-avatar="⚡" title="Lightning">⚡</button>
+          <button type="button" class="avatar-preset-btn" data-avatar="💼" title="Finance">💼</button>
+          <button type="button" class="avatar-preset-btn" data-avatar="🌟" title="Star">🌟</button>
+          <button type="button" class="avatar-preset-btn" data-avatar="🎯" title="Bullseye">🎯</button>
+          <button type="button" class="avatar-preset-btn" data-avatar="💰" title="Money Bag">💰</button>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="cancel-avatar-modal-btn" class="pill-btn secondary-pill">Cancel</button>
+        <button type="button" id="save-avatar-modal-btn" class="pill-btn primary-pill">Save Picture</button>
       </div>
     </div>
   </div>

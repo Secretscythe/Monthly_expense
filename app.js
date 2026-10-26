@@ -350,12 +350,38 @@ function getUserInitials(name) {
   return name.slice(0, 2).toUpperCase();
 }
 
+function getAvatarHTML(user, style = '') {
+  if (!user) return `<div class="user-avatar" style="${style}">SF</div>`;
+  const initials = getUserInitials(user.name);
+  if (user.avatar && (user.avatar.startsWith('data:image') || user.avatar.startsWith('http') || user.avatar.startsWith('blob:'))) {
+    return `<div class="user-avatar has-custom-img" style="${style}"><img src="${user.avatar}" alt="${escapeHTML(user.name)}" class="avatar-img" /></div>`;
+  }
+  if (user.avatar) {
+    return `<div class="user-avatar" style="${style}"><span class="avatar-emoji">${escapeHTML(user.avatar)}</span></div>`;
+  }
+  return `<div class="user-avatar" style="${style}">${initials}</div>`;
+}
+
+function renderAvatarElement(el, user, overrideAvatar = undefined) {
+  if (!el || !user) return;
+  const avatarVal = overrideAvatar !== undefined ? overrideAvatar : user.avatar;
+  if (avatarVal && (avatarVal.startsWith('data:image') || avatarVal.startsWith('http') || avatarVal.startsWith('blob:'))) {
+    el.innerHTML = `<img src="${avatarVal}" alt="${escapeHTML(user.name)}" class="avatar-img" />`;
+    el.classList.add('has-custom-img');
+  } else if (avatarVal) {
+    el.innerHTML = `<span class="avatar-emoji">${escapeHTML(avatarVal)}</span>`;
+    el.classList.remove('has-custom-img');
+  } else {
+    el.textContent = getUserInitials(user.name);
+    el.classList.remove('has-custom-img');
+  }
+}
+
 function updateUserProfileUI(user) {
   if (!user) return;
-  const initials = getUserInitials(user.name);
-  if ($('user-avatar')) $('user-avatar').textContent = initials;
+  renderAvatarElement($('user-avatar'), user);
+  renderAvatarElement($('dropdown-user-avatar'), user);
   if ($('user-display-name')) $('user-display-name').textContent = user.name;
-  if ($('dropdown-user-avatar')) $('dropdown-user-avatar').textContent = initials;
   if ($('dropdown-user-name')) $('dropdown-user-name').textContent = user.name;
   if ($('dropdown-user-email')) $('dropdown-user-email').textContent = user.email;
 
@@ -376,6 +402,100 @@ function updateUserProfileUI(user) {
   if ($('dropdown-recovery-code-display')) {
     $('dropdown-recovery-code-display').textContent = user.recoveryCode;
   }
+}
+
+// ========================================================
+// PROFILE PICTURE / AVATAR MODAL CONTROLLERS
+// ========================================================
+
+let pendingAvatar = null;
+
+function openAvatarModal() {
+  if (!state.currentUser) return;
+  closeUserDropdown();
+  pendingAvatar = state.currentUser.avatar || null;
+  renderAvatarElement($('modal-avatar-preview'), state.currentUser, pendingAvatar);
+
+  // Update preset buttons active state
+  document.querySelectorAll('.avatar-preset-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.avatar === pendingAvatar);
+  });
+
+  if ($('avatar-modal')) $('avatar-modal').classList.remove('hidden');
+  document.body.classList.add('auth-modal-open');
+}
+
+function closeAvatarModal() {
+  if ($('avatar-modal')) $('avatar-modal').classList.add('hidden');
+  if (!$('auth-modal') || $('auth-modal').classList.contains('hidden')) {
+    document.body.classList.remove('auth-modal-open');
+  }
+}
+
+function handleAvatarFileUpload(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    showToast('⚠️ Please select a valid image file (PNG, JPG, WEBP, or GIF).');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const size = 160;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // Center crop the image into a square
+        const minDim = Math.min(img.width, img.height);
+        const sx = (img.width - minDim) / 2;
+        const sy = (img.height - minDim) / 2;
+        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+        pendingAvatar = dataUrl;
+        renderAvatarElement($('modal-avatar-preview'), state.currentUser, pendingAvatar);
+
+        // Deselect presets
+        document.querySelectorAll('.avatar-preset-btn').forEach(btn => btn.classList.remove('active'));
+      } catch (err) {
+        console.warn('Image resize error', err);
+        pendingAvatar = e.target.result;
+        renderAvatarElement($('modal-avatar-preview'), state.currentUser, pendingAvatar);
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleSaveAvatar() {
+  if (!state.currentUser) return;
+  state.currentUser.avatar = pendingAvatar;
+
+  // Persist to user list in storage
+  const users = getRegisteredUsers();
+  const u = users.find(x => x.id === state.currentUser.id);
+  if (u) {
+    u.avatar = pendingAvatar;
+    saveRegisteredUsers(users);
+  }
+
+  // Persist in active session
+  setActiveSession(state.currentUser, true);
+
+  // Update UI everywhere
+  updateUserProfileUI(state.currentUser);
+  if ($('admin-modal') && !$('admin-modal').classList.contains('hidden')) {
+    renderAdminUsersTable();
+  }
+
+  showToast('Profile picture updated successfully! 📸');
+  closeAvatarModal();
 }
 
 function applyUserLogin(user, showGreeting = true) {
@@ -2650,6 +2770,10 @@ function initEventListeners() {
 
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
+      if ($('avatar-modal') && !$('avatar-modal').classList.contains('hidden')) {
+        closeAvatarModal();
+        return;
+      }
       if ($('admin-modal') && !$('admin-modal').classList.contains('hidden')) {
         closeAdminModal();
         return;
@@ -2908,13 +3032,13 @@ function renderAdminUsersTable() {
       <tr>
         <td>
           <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <div class="user-avatar" style="width: 26px; height: 26px; font-size: 0.68rem;">${initials}</div>
+            ${getAvatarHTML(u, 'width: 26px; height: 26px; font-size: 0.68rem;')}
             <div>
               <strong>${escapeHTML(u.name)}</strong>
               ${isCur ? ' <span style="font-size: 0.68rem; color: #a5b4fc;">(You)</span>' : ''}
             </div>
           </div>
-        <td>
+        </td>
           <code>${escapeHTML(u.email)}</code>
           <div style="font-size: 0.68rem; color: #818cf8; margin-top: 3px;">
             Recovery: <strong style="letter-spacing: 0.05em; color: #c7d2fe;">${u.recoveryCode || 'None'}</strong>
@@ -3232,6 +3356,69 @@ function initAuthEvents() {
   if ($('logout-btn')) {
     $('logout-btn').addEventListener('click', () => {
       handleSignOut();
+    });
+  }
+
+  // Profile Picture / Avatar Modal Listeners
+  if ($('user-avatar-wrap')) {
+    $('user-avatar-wrap').addEventListener('click', () => {
+      openAvatarModal();
+    });
+  }
+  if ($('open-avatar-modal-btn')) {
+    $('open-avatar-modal-btn').addEventListener('click', () => {
+      openAvatarModal();
+    });
+  }
+  if ($('close-avatar-modal-btn')) {
+    $('close-avatar-modal-btn').addEventListener('click', closeAvatarModal);
+  }
+  if ($('cancel-avatar-modal-btn')) {
+    $('cancel-avatar-modal-btn').addEventListener('click', closeAvatarModal);
+  }
+  if ($('choose-avatar-file-btn')) {
+    $('choose-avatar-file-btn').addEventListener('click', () => {
+      if ($('avatar-file-input')) $('avatar-file-input').click();
+    });
+  }
+  if ($('trigger-avatar-upload-btn')) {
+    $('trigger-avatar-upload-btn').addEventListener('click', () => {
+      if ($('avatar-file-input')) $('avatar-file-input').click();
+    });
+  }
+  if ($('avatar-file-input')) {
+    $('avatar-file-input').addEventListener('change', e => {
+      if (e.target.files && e.target.files[0]) {
+        handleAvatarFileUpload(e.target.files[0]);
+      }
+      e.target.value = '';
+    });
+  }
+  if ($('remove-avatar-btn')) {
+    $('remove-avatar-btn').addEventListener('click', () => {
+      pendingAvatar = '';
+      renderAvatarElement($('modal-avatar-preview'), state.currentUser, '');
+      document.querySelectorAll('.avatar-preset-btn').forEach(btn => btn.classList.remove('active'));
+    });
+  }
+  if ($('avatar-presets-grid')) {
+    $('avatar-presets-grid').addEventListener('click', e => {
+      const btn = e.target.closest('.avatar-preset-btn');
+      if (btn && btn.dataset.avatar) {
+        pendingAvatar = btn.dataset.avatar;
+        renderAvatarElement($('modal-avatar-preview'), state.currentUser, pendingAvatar);
+        document.querySelectorAll('.avatar-preset-btn').forEach(b => b.classList.toggle('active', b === btn));
+      }
+    });
+  }
+  if ($('save-avatar-modal-btn')) {
+    $('save-avatar-modal-btn').addEventListener('click', handleSaveAvatar);
+  }
+  if ($('avatar-modal')) {
+    $('avatar-modal').addEventListener('click', e => {
+      if (e.target === $('avatar-modal')) {
+        closeAvatarModal();
+      }
     });
   }
 
