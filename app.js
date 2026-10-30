@@ -3569,43 +3569,7 @@ function initAuthEvents() {
     });
   }
 
-  if ($('copy-dropdown-recovery-btn')) {
-    $('copy-dropdown-recovery-btn').addEventListener('click', e => {
-      e.stopPropagation();
-      const code = $('dropdown-recovery-code-display') ? $('dropdown-recovery-code-display').textContent.trim() : '';
-      if (code) {
-        navigator.clipboard.writeText(code).then(() => {
-          const btnText = $('copy-dropdown-recovery-text');
-          if (btnText) btnText.textContent = 'Copied! ✓';
-          showToast(`Recovery code (${code}) copied to clipboard! 📋`);
-          setTimeout(() => {
-            if (btnText) btnText.textContent = 'Copy';
-          }, 2500);
-        }).catch(() => {
-          showToast(`Recovery Code: ${code}`);
-        });
-      }
-    });
-  }
 
-  if ($('view-recovery-code-btn')) {
-    $('view-recovery-code-btn').addEventListener('click', () => {
-      closeUserDropdown();
-      if (state.currentUser) {
-        if (!state.currentUser.recoveryCode) {
-          const code = Math.floor(100000 + Math.random() * 900000).toString();
-          state.currentUser.recoveryCode = code;
-          const users = getRegisteredUsers();
-          const u = users.find(x => x.id === state.currentUser.id);
-          if (u) {
-            u.recoveryCode = code;
-            saveRegisteredUsers(users);
-          }
-        }
-        showRecoveryCodeModal(state.currentUser.email, state.currentUser.recoveryCode);
-      }
-    });
-  }
 
   setupPasswordToggle('signin-toggle-pw', 'signin-password');
   setupPasswordToggle('signup-toggle-pw', 'signup-password');
