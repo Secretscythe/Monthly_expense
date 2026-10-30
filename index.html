@@ -858,14 +858,18 @@
         </div>
 
         <div class="form-group">
-          <div class="input-label-row">
-            <label for="reset-recovery-code" class="input-label">6-Digit Verification Code <span class="input-sublabel">(Given at sign up)</span></label>
+          <div class="input-label-row" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <label for="reset-recovery-code" class="input-label">6-Digit Verification Code</label>
+            <button type="button" id="send-reset-code-btn" class="send-email-code-btn" title="Send 6-digit verification code to your email">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+              <span id="send-reset-code-btn-text">Send Code to Email</span>
+            </button>
           </div>
           <div class="auth-input-wrap with-icon">
             <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             <input type="text" id="reset-recovery-code" class="quick-input code-digit-input" placeholder="e.g. 654321" maxlength="6" inputmode="numeric" required />
           </div>
-          <p class="input-helper-text">Enter the 6-digit verification code provided when you created your account to verify your identity and reset your password.</p>
+          <p class="input-helper-text" id="reset-code-helper-text">Enter the 6-digit code sent to your email, or click <strong>Send Code to Email</strong> above.</p>
         </div>
 
         <div class="form-group">
@@ -913,7 +917,7 @@
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/><path d="M12 14v3"/></svg>
         </div>
         <h2 id="recovery-modal-title" class="auth-title">Your 6-Digit Verification Code</h2>
-        <p class="auth-subtitle">Save this 6-digit verification code safely. You will need it whenever you reset your password or unlock your account.</p>
+        <p class="auth-subtitle">We have dispatched your verification code to your email. Keep this code safe for resetting passwords or unlocking your account.</p>
       </div>
 
       <div class="recovery-code-display-wrap">
@@ -927,7 +931,7 @@
       <div class="recovery-code-notice">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <div>
-          <strong>Store this in a safe place.</strong> This code allows you to verify your identity and reset your password at any time without needing an external email server.
+          <strong>A copy has been sent to your email.</strong> Store this in a safe place. This code verifies your identity whenever you need to reset your password or unlock your account.
         </div>
       </div>
 

@@ -26,7 +26,7 @@ def load_env():
 
 load_env()
 
-def send_real_email(to_email, code):
+def send_real_email(to_email, code, email_type='reset'):
     load_env()
     gmail_user = os.environ.get('GMAIL_USER', '').strip()
     gmail_pass = os.environ.get('GMAIL_APP_PASSWORD', '').strip()
@@ -38,21 +38,24 @@ def send_real_email(to_email, code):
         print("[SpendFlow SMTP] To send real emails, set GMAIL_USER and GMAIL_APP_PASSWORD in .env\n")
         return False, "Gmail credentials not configured in .env. Please configure GMAIL_USER and GMAIL_APP_PASSWORD."
 
+    is_signup = (email_type == 'signup')
+    subject = f"SpendFlow - Welcome! Your Verification Code is {code}" if is_signup else f"SpendFlow - Password Reset Code is {code}"
+    headline = "Welcome to SpendFlow" if is_signup else "Password Reset Request"
+    intro = "Thank you for creating an account with SpendFlow! Here is your 6-digit verification code to keep your account safe:" if is_signup else "We received a request to verify your identity and reset your account password. Enter this security code to proceed:"
+
     msg = MIMEMultipart('alternative')
-    msg['Subject'] = f"SpendFlow - Your Verification Code is {code}"
+    msg['Subject'] = subject
     msg['From'] = f"SpendFlow Security <{gmail_user}>"
     msg['To'] = to_email
 
     text_content = f"""Hello,
 
-We received a request to reset your password on SpendFlow.
-
-Your 6-digit security verification code is:
+{intro}
 
     {code}
 
 This code is valid for 10 minutes.
-If you did not request this code, you can safely ignore this email.
+If you did not request this, you can safely ignore this email.
 
 Best regards,
 The SpendFlow Security Team
@@ -159,8 +162,8 @@ The SpendFlow Security Team
       <div class="brand-icon">$</div>
       <div class="brand-title">SpendFlow</div>
     </div>
-    <h1>Password Reset Request</h1>
-    <p>We received a request to verify your identity and reset your account password. Enter this one-time security code to proceed:</p>
+    <h1>{headline}</h1>
+    <p>{intro}</p>
     
     <div class="code-box">
       <div class="code-label">One-Time Security Verification Code</div>
@@ -232,12 +235,13 @@ class SpendFlowHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 data = json.loads(body_bytes.decode('utf-8'))
                 to_email = data.get('to', '').strip()
                 code = data.get('code', '').strip()
+                email_type = data.get('type', 'reset').strip()
 
                 if not to_email or not code:
                     self._send_json(400, {'success': False, 'message': 'Missing email or code.'})
                     return
 
-                success, message = send_real_email(to_email, code)
+                success, message = send_real_email(to_email, code, email_type)
                 self._send_json(200, {
                     'success': success,
                     'message': message,

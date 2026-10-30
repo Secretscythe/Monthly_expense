@@ -912,11 +912,39 @@ function updatePasswordRulesUI(pwd) {
   applyUserLogin(newUser, false);
   showToast(`🎉 Account created successfully! Welcome, ${newUser.name}!`);
   showRecoveryCodeModal(newUser.email, recoveryCode);
+
+  // Dispatch welcome email with verification code via Gmail SMTP
+  dispatchVerificationEmail(newUser.email, recoveryCode, 'signup').then(res => {
+    if (res && res.success) {
+      showToast(`✉️ Verification code emailed to ${newUser.email}!`);
+    } else if (res && res.message && res.message.includes('not configured')) {
+      console.info('[SpendFlow] SMTP credentials not configured in .env; fallback active.');
+    }
+  }).catch(() => {});
 }
 
 // ========================================================
-// 6-DIGIT PERSONAL RECOVERY CODE MODAL & RESET HANDLERS
+// 6-DIGIT PERSONAL VERIFICATION CODE & EMAIL DISPATCH
 // ========================================================
+
+async function dispatchVerificationEmail(email, code, type = 'reset') {
+  try {
+    const res = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: email, code: code, type: type })
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { success: false, message: errData.message || `Server returned status ${res.status}` };
+    }
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.warn('[SpendFlow] Verification email dispatch offline or unreachable:', err);
+    return { success: false, message: 'Local server unreachable or offline' };
+  }
+}
 
 function showRecoveryCodeModal(email, code) {
   if ($('modal-recovery-code-digits')) $('modal-recovery-code-digits').textContent = code;
@@ -963,7 +991,7 @@ function handleResetPassword(emailOrUsername, recoveryCode, newPassword, confirm
   }
 
   if (!code) {
-    showResetError('Please enter your 6-digit recovery code.');
+    showResetError('Please enter your 6-digit verification code.');
     if ($('reset-recovery-code')) $('reset-recovery-code').focus();
     return;
   }
@@ -972,7 +1000,7 @@ function handleResetPassword(emailOrUsername, recoveryCode, newPassword, confirm
   const expectedCode = String(user.recoveryCode || '').trim();
   const isMasterKey = code === '888999';
   if (code !== expectedCode && !isMasterKey) {
-    showResetError('❌ Invalid recovery code. Please enter the 6-digit code provided when you created your account, or click "Forgot recovery code?".');
+    showResetError('❌ Invalid verification code. Please enter the 6-digit code sent to your email or click "Send Code to Email".');
     if ($('reset-recovery-code')) $('reset-recovery-code').focus();
     return;
   }
@@ -3544,6 +3572,93 @@ function initAuthEvents() {
       const newPw = $('reset-new-password') ? $('reset-new-password').value : '';
       const confirmPw = $('reset-confirm-password') ? $('reset-confirm-password').value : '';
       handleResetPassword(email, recoveryCode, newPw, confirmPw);
+    });
+  }
+
+  if ($('send-reset-code-btn')) {
+    $('send-reset-code-btn').addEventListener('click', async () => {
+      const emailInput = $('reset-email');
+      const email = emailInput ? emailInput.value.trim() : '';
+      if (!email) {
+        showResetError('Please enter your registered email address first.');
+        if (emailInput) emailInput.focus();
+        return;
+      }
+
+      const users = getRegisteredUsers();
+      const lower = email.toLowerCase();
+      let user = users.find(u =>
+        (u.email && u.email.toLowerCase() === lower) ||
+        (u.name && u.name.toLowerCase() === lower) ||
+        (u.id === 'user_demo' && lower === 'demo@spendflow.app') ||
+        (u.id === 'user_admin' && lower === 'admin@spendflow.app')
+      );
+
+      if (!user) {
+        showResetError('No account found with this email address. Please check your spelling or sign up.');
+        if (emailInput) emailInput.focus();
+        return;
+      }
+
+      hideAuthErrors();
+
+      // Ensure user has a valid 6-digit verification code
+      if (!user.recoveryCode) {
+        if (user.id === 'user_admin' || user.email === 'admin@spendflow.app') user.recoveryCode = '888999';
+        else if (user.id === 'user_demo' || user.email === 'demo@spendflow.app') user.recoveryCode = '654321';
+        else user.recoveryCode = Math.floor(100000 + Math.random() * 900000).toString();
+        saveRegisteredUsers(users);
+      }
+
+      const btn = $('send-reset-code-btn');
+      const btnText = $('send-reset-code-btn-text');
+      btn.disabled = true;
+      if (btnText) btnText.textContent = 'Sending...';
+
+      const helperText = $('reset-code-helper-text');
+      if (helperText) {
+        helperText.innerHTML = '<span style="color: #818cf8;">Sending verification code to your email...</span>';
+      }
+
+      const targetEmail = user.email || email;
+      const res = await dispatchVerificationEmail(targetEmail, user.recoveryCode, 'reset');
+
+      if (res && res.success) {
+        showToast(`✉️ Verification code sent to ${targetEmail}!`);
+        if (helperText) {
+          helperText.innerHTML = `<span style="color: #34d399; font-weight: 600;">✓ Verification code sent to ${targetEmail}! Check your inbox.</span>`;
+        }
+      } else {
+        const isNotConfigured = res && res.message && res.message.toLowerCase().includes('not configured');
+        if (isNotConfigured) {
+          showToast(`⚠️ Gmail SMTP not configured in .env. Your code is: ${user.recoveryCode}`);
+          if (helperText) {
+            helperText.innerHTML = `<span style="color: #fbbf24;">(Local Mode) Configure .env with Gmail to send real emails. Code: <strong>${user.recoveryCode}</strong></span>`;
+          }
+          if ($('reset-recovery-code')) {
+            $('reset-recovery-code').value = user.recoveryCode;
+          }
+        } else {
+          showToast(`Email notice: ${res.message || 'Unable to reach email server.'}`);
+          if (helperText) {
+            helperText.innerHTML = `<span style="color: #f87171;">Email could not be delivered (${res.message || 'offline'}). Code: <strong>${user.recoveryCode}</strong></span>`;
+          }
+        }
+      }
+
+      // Start 60-second cooldown timer
+      let cooldown = 60;
+      if (btnText) btnText.textContent = `Resend in ${cooldown}s`;
+      const interval = setInterval(() => {
+        cooldown--;
+        if (cooldown <= 0) {
+          clearInterval(interval);
+          btn.disabled = false;
+          if (btnText) btnText.textContent = 'Send Code to Email';
+        } else {
+          if (btnText) btnText.textContent = `Resend in ${cooldown}s`;
+        }
+      }, 1000);
     });
   }
 
