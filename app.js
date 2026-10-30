@@ -928,22 +928,29 @@ function updatePasswordRulesUI(pwd) {
 // ========================================================
 
 async function dispatchVerificationEmail(email, code, type = 'reset') {
-  try {
-    const res = await fetch('/api/send-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: email, code: code, type: type })
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { success: false, message: errData.message || `Server returned status ${res.status}` };
+  const endpoints = ['/api/send-email', 'http://localhost:3000/api/send-email'];
+  let lastErr = 'Server unreachable';
+
+  for (const ep of endpoints) {
+    try {
+      const res = await fetch(ep, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: email, code: code, type: type })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        return { success: false, message: errData.message || `Server returned status ${res.status}` };
+      }
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      lastErr = err.message || 'Network error';
     }
-    const data = await res.json();
-    return data;
-  } catch (err) {
-    console.warn('[SpendFlow] Verification email dispatch offline or unreachable:', err);
-    return { success: false, message: 'Local server unreachable or offline' };
   }
+
+  console.warn('[SpendFlow] Verification email dispatch offline or unreachable:', lastErr);
+  return { success: false, message: 'Email server is offline or unreachable.' };
 }
 
 function showRecoveryCodeModal(email, code) {
