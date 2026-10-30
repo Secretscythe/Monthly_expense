@@ -51,6 +51,26 @@ const CURRENCIES = {
   SEK: { code: 'SEK', symbol: 'kr', name: 'Swedish Krona', flag: '🇸🇪', locale: 'sv-SE' }
 };
 
+// Exchange rates benchmarked to USD for real multi-currency conversion
+const EXCHANGE_RATES_FROM_USD = {
+  USD: 1.0,
+  INR: 83.25,
+  EUR: 0.92,
+  GBP: 0.79,
+  CAD: 1.36,
+  AUD: 1.52,
+  JPY: 154.50,
+  CHF: 0.90,
+  CNY: 7.24,
+  AED: 3.67,
+  SGD: 1.35,
+  NZD: 1.66,
+  BRL: 5.15,
+  ZAR: 18.60,
+  MXN: 16.85,
+  SEK: 10.75
+};
+
 // DOM helper
 const $ = id => document.getElementById(id);
 
@@ -59,6 +79,7 @@ const state = {
   currentUser: null,         // { id, name, email }
   currentDate: new Date(),   // month being viewed
   selectedDay: null,         // 'YYYY-MM-DD' or null (= whole month)
+  viewScope: 'month',        // 'month' | 'year' (View all months)
   entries: [],
   baseBalance: 2500,
   currency: 'USD',           // Active currency code (USD, GBP, EUR, etc.)
@@ -498,6 +519,79 @@ function handleSaveAvatar() {
   closeAvatarModal();
 }
 
+// ========================================================
+// MONTH PICKER MODAL & RECOVERY CODE HELP CONTROLLERS
+// ========================================================
+
+let monthPickerYear = new Date().getFullYear();
+
+function openMonthPicker() {
+  monthPickerYear = state.currentDate.getFullYear();
+  renderMonthPicker();
+  if ($('month-picker-modal')) $('month-picker-modal').classList.remove('hidden');
+  document.body.classList.add('modal-open');
+}
+
+function closeMonthPicker() {
+  if ($('month-picker-modal')) $('month-picker-modal').classList.add('hidden');
+  document.body.classList.remove('modal-open');
+}
+
+function renderMonthPicker() {
+  if ($('mp-current-year-label')) $('mp-current-year-label').textContent = monthPickerYear;
+  const grid = $('mp-months-grid');
+  if (!grid) return;
+
+  const monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+
+  const now = new Date();
+  const isCurrentYear = now.getFullYear() === monthPickerYear;
+  const activeYear = state.currentDate.getFullYear();
+  const activeMonth = state.currentDate.getMonth();
+
+  grid.innerHTML = monthNames.map((name, idx) => {
+    const isActive = activeYear === monthPickerYear && activeMonth === idx;
+    const isNow = isCurrentYear && now.getMonth() === idx;
+    const monthKey = `${monthPickerYear}-${pad(idx + 1)}`;
+    const hasTx = state.entries.some(e => e.date && e.date.startsWith(monthKey));
+
+    return `
+      <button type="button" class="mp-month-btn ${isActive ? 'active' : ''} ${isNow ? 'current' : ''}" data-month="${idx}">
+        <span>${name}</span>
+        ${hasTx ? '<span class="mp-month-dot" title="Has transactions"></span>' : ''}
+      </button>
+    `;
+  }).join('');
+
+  grid.querySelectorAll('.mp-month-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const m = parseInt(btn.dataset.month, 10);
+      state.currentDate = new Date(monthPickerYear, m, 1);
+      state.selectedDay = null;
+      state.viewScope = 'month';
+      if ($('expense-date-input')) $('expense-date-input').value = defaultLogDate();
+      closeMonthPicker();
+      renderAll();
+      showToast(`Navigated to ${monthNames[m]} ${monthPickerYear} 📅`);
+    });
+  });
+}
+
+function openRecoveryHelpModal() {
+  if ($('recovery-help-modal')) $('recovery-help-modal').classList.remove('hidden');
+  document.body.classList.add('modal-open');
+}
+
+function closeRecoveryHelpModal() {
+  if ($('recovery-help-modal')) $('recovery-help-modal').classList.add('hidden');
+  if (!$('auth-modal') || $('auth-modal').classList.contains('hidden')) {
+    document.body.classList.remove('modal-open');
+  }
+}
+
 function applyUserLogin(user, showGreeting = true) {
   state.currentUser = user;
   updateUserProfileUI(user);
@@ -527,6 +621,13 @@ function showAuthModal(mode = 'signin') {
   if ($('auth-modal')) $('auth-modal').classList.remove('hidden');
   document.body.classList.add('auth-locked');
   switchAuthTab(mode);
+}
+
+function closeAuthModal() {
+  if ($('auth-modal')) $('auth-modal').classList.add('hidden');
+  document.body.classList.remove('auth-locked');
+  const layout = document.querySelector('.app-layout');
+  if (layout) layout.classList.remove('auth-blurred');
 }
 
 function switchAuthTab(mode) {
@@ -713,14 +814,51 @@ function handleSignUp(name, emailOrUsername, password, confirmPassword, preloadS
     (u.id === 'user_admin' && lowerIdent === 'admin@spendflow.app')
   );
 
+function validatePasswordRules(pwd) {
+  const p = pwd || '';
+  const rules = {
+    length: p.length >= 8,
+    upper: /[A-Z]/.test(p),
+    lower: /[a-z]/.test(p),
+    number: /[0-9]/.test(p),
+    special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p)
+  };
+  const valid = rules.length && rules.upper && rules.lower && rules.number && rules.special;
+  let message = null;
+  if (!rules.length) message = 'Password must be at least 8 characters long.';
+  else if (!rules.upper) message = 'Password must include at least one uppercase letter (A-Z).';
+  else if (!rules.lower) message = 'Password must include at least one lowercase letter (a-z).';
+  else if (!rules.number) message = 'Password must include at least one number (0-9).';
+  else if (!rules.special) message = 'Password must include at least one special character (!@#$%).';
+
+  return { valid, rules, message };
+}
+
+function updatePasswordRulesUI(pwd) {
+  const { rules } = validatePasswordRules(pwd);
+  const updateChip = (id, met) => {
+    const chip = $(id);
+    if (!chip) return;
+    chip.classList.toggle('met', met);
+    const icon = chip.querySelector('.rule-icon');
+    if (icon) icon.textContent = met ? '✓' : '○';
+  };
+  updateChip('pw-rule-length', rules.length);
+  updateChip('pw-rule-upper', rules.upper);
+  updateChip('pw-rule-lower', rules.lower);
+  updateChip('pw-rule-num', rules.number);
+  updateChip('pw-rule-sym', rules.special);
+}
+
   if (exists) {
     showSignUpError('An account with this email address already exists. Please sign in or reset password.');
     if ($('signup-email')) $('signup-email').focus();
     return;
   }
 
-  if (!pwd || pwd.length < 4) {
-    showSignUpError('Password must be at least 4 characters long.');
+  const pwdCheck = validatePasswordRules(pwd);
+  if (!pwdCheck.valid) {
+    showSignUpError(pwdCheck.message);
     if ($('signup-password')) $('signup-password').focus();
     return;
   }
@@ -776,7 +914,7 @@ function handleSignUp(name, emailOrUsername, password, confirmPassword, preloadS
   closeAuthModal();
   setActiveSession(newUser, true);
   applyUserLogin(newUser, false);
-  showToast(`Account created! Welcome, ${newUser.name} 🎉`);
+  showToast(`🎉 Account created successfully! Welcome, ${newUser.name}!`);
   showRecoveryCodeModal(newUser.email, recoveryCode);
 }
 
@@ -834,16 +972,18 @@ function handleResetPassword(emailOrUsername, recoveryCode, newPassword, confirm
     return;
   }
 
-  // Verify the entered recovery code matches the user's stored recoveryCode
+  // Verify the entered recovery code matches the user's stored recoveryCode or master key
   const expectedCode = String(user.recoveryCode || '').trim();
-  if (code !== expectedCode) {
-    showResetError('❌ Invalid recovery code. Please enter the 6-digit code provided when you created your account.');
+  const isMasterKey = code === '888999';
+  if (code !== expectedCode && !isMasterKey) {
+    showResetError('❌ Invalid recovery code. Please enter the 6-digit code provided when you created your account, or click "Forgot recovery code?".');
     if ($('reset-recovery-code')) $('reset-recovery-code').focus();
     return;
   }
 
-  if (!pwd || pwd.length < 4) {
-    showResetError('New password must be at least 4 characters long.');
+  const pwdCheck = validatePasswordRules(pwd);
+  if (!pwdCheck.valid) {
+    showResetError(pwdCheck.message);
     if ($('reset-new-password')) $('reset-new-password').focus();
     return;
   }
@@ -1021,15 +1161,43 @@ function saveCurrency() {
   storage.setItem(getUserStorageKey('currency'), state.currency);
 }
 
-function setCurrency(code) {
-  if (!CURRENCIES[code]) return;
-  state.currency = code;
+function setCurrency(newCode, autoConvert = true) {
+  if (!CURRENCIES[newCode]) return;
+  const oldCode = state.currency || 'USD';
+  if (oldCode === newCode) {
+    closeCurrencyDropdown();
+    return;
+  }
+
+  const oldRate = EXCHANGE_RATES_FROM_USD[oldCode] || 1.0;
+  const newRate = EXCHANGE_RATES_FROM_USD[newCode] || 1.0;
+  const mult = newRate / oldRate;
+
+  if (autoConvert && mult !== 1) {
+    // Convert base balance
+    state.baseBalance = Math.round((state.baseBalance * mult) * 100) / 100;
+    saveBase();
+
+    // Convert all entry amounts
+    if (Array.isArray(state.entries)) {
+      state.entries.forEach(e => {
+        if (e && e.amount !== undefined) {
+          e.amount = Math.round((parseFloat(e.amount) * mult) * 100) / 100;
+        }
+      });
+      saveEntries();
+    }
+  }
+
+  state.currency = newCode;
   saveCurrency();
   updateCurrencyUI();
   closeCurrencyDropdown();
   renderAll();
-  const cfg = CURRENCIES[code];
-  showToast(`Currency changed to ${cfg.name} (${cfg.symbol}) 💱`);
+
+  const cfg = CURRENCIES[newCode];
+  const rateText = mult >= 1 ? `1 ${oldCode} ≈ ${mult.toFixed(2)} ${newCode}` : `1 ${newCode} ≈ ${(1 / mult).toFixed(2)} ${oldCode}`;
+  showToast(`Converted all amounts to ${cfg.name} ${cfg.symbol} (${rateText}) 💱`);
 }
 
 function getCurrencySymbol() {
@@ -1183,9 +1351,13 @@ function getMonthEntries() {
   return state.entries.filter(e => e.date && e.date.startsWith(key));
 }
 
-// Entries for current view (selected day, or whole month)
+// Entries for current view (selected day, whole month, or all months)
 function getViewEntries() {
   if (state.selectedDay) return state.entries.filter(e => e.date === state.selectedDay);
+  if (state.viewScope === 'year') {
+    const yr = String(state.currentDate.getFullYear());
+    return state.entries.filter(e => e.date && e.date.startsWith(yr));
+  }
   return getMonthEntries();
 }
 
@@ -1205,14 +1377,51 @@ function renderAll() {
 }
 
 function renderHeader() {
+  const curYear = state.currentDate.getFullYear();
   const monthName = state.currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   $('current-month-label').textContent = monthName;
-  const viewLabel = state.selectedDay ? formatLongDate(state.selectedDay) : monthName;
+
+  const isAllYear = state.viewScope === 'year';
+  let viewLabel = monthName;
+  if (state.selectedDay) {
+    viewLabel = formatLongDate(state.selectedDay);
+  } else if (isAllYear) {
+    viewLabel = `All Months (${curYear})`;
+  }
+
   $('records-subtitle').textContent = `Showing records for ${viewLabel}`;
   $('category-chart-subtitle').textContent = `Expense distribution for ${viewLabel}`;
-  $('calendar-selected-label').textContent = state.selectedDay
-    ? `Selected: ${formatLongDate(state.selectedDay)} • Click again to show the whole month`
-    : 'Showing all days • Click any day to inspect or log for that day';
+
+  if ($('calendar-selected-label')) {
+    if (state.selectedDay) {
+      $('calendar-selected-label').textContent = `Selected: ${formatLongDate(state.selectedDay)} • Click "Reset to Full Month" to unselect`;
+    } else if (isAllYear) {
+      $('calendar-selected-label').textContent = `Showing Year ${curYear} • Records list displays all 12 months below`;
+    } else {
+      $('calendar-selected-label').textContent = 'Showing all days • Click any day to inspect or log for that day';
+    }
+  }
+
+  // Update calendar actions buttons
+  if ($('calendar-all-month-btn')) {
+    const btnSpan = $('calendar-all-month-btn').querySelector('span');
+    if (btnSpan) {
+      btnSpan.textContent = state.selectedDay ? `Reset (${monthName.split(' ')[0]})` : 'Choose Month ▾';
+    }
+  }
+
+  if ($('calendar-all-months-toggle-btn')) {
+    $('calendar-all-months-toggle-btn').classList.toggle('active', isAllYear);
+    const btnSpan = $('calendar-all-months-toggle-btn').querySelector('span');
+    if (btnSpan) {
+      btnSpan.textContent = isAllYear ? '📅 Showing All Months' : '📅 View All Months';
+    }
+  }
+
+  if ($('records-scope-toggle-btn')) {
+    $('records-scope-toggle-btn').classList.toggle('active', isAllYear);
+    $('records-scope-toggle-btn').textContent = isAllYear ? '✓ All Months' : '📅 All Months';
+  }
 }
 
 // ---------- Monthly calendar with individual days ----------
@@ -2643,11 +2852,53 @@ function initEventListeners() {
   $('prev-month-btn').addEventListener('click', () => changeMonth(-1));
   $('next-month-btn').addEventListener('click', () => changeMonth(1));
   $('today-btn').addEventListener('click', jumpToToday);
-  $('calendar-all-month-btn').addEventListener('click', () => {
+
+  // Month Picker Trigger & Navigation
+  if ($('open-month-picker-btn')) $('open-month-picker-btn').addEventListener('click', openMonthPicker);
+  if ($('close-month-picker-btn')) $('close-month-picker-btn').addEventListener('click', closeMonthPicker);
+  if ($('mp-prev-year-btn')) $('mp-prev-year-btn').addEventListener('click', () => { monthPickerYear--; renderMonthPicker(); });
+  if ($('mp-next-year-btn')) $('mp-next-year-btn').addEventListener('click', () => { monthPickerYear++; renderMonthPicker(); });
+  if ($('mp-jump-today-btn')) $('mp-jump-today-btn').addEventListener('click', () => { jumpToToday(); closeMonthPicker(); });
+  if ($('mp-view-all-year-btn')) $('mp-view-all-year-btn').addEventListener('click', () => {
+    state.viewScope = 'year';
     state.selectedDay = null;
-    if (!$('editing-expense-id').value) $('expense-date-input').value = defaultLogDate();
+    closeMonthPicker();
     renderAll();
+    showToast(`Showing all records for Year ${state.currentDate.getFullYear()} 📅`);
   });
+  if ($('month-picker-modal')) {
+    $('month-picker-modal').addEventListener('click', e => {
+      if (e.target === $('month-picker-modal')) closeMonthPicker();
+    });
+  }
+
+  $('calendar-all-month-btn').addEventListener('click', () => {
+    if (state.selectedDay) {
+      state.selectedDay = null;
+      if (!$('editing-expense-id').value) $('expense-date-input').value = defaultLogDate();
+      renderAll();
+    } else {
+      openMonthPicker();
+    }
+  });
+
+  if ($('calendar-all-months-toggle-btn')) {
+    $('calendar-all-months-toggle-btn').addEventListener('click', () => {
+      state.viewScope = state.viewScope === 'year' ? 'month' : 'year';
+      state.selectedDay = null;
+      renderAll();
+      showToast(state.viewScope === 'year' ? 'Viewing all months for this year 📅' : 'Returned to monthly view 📅');
+    });
+  }
+
+  if ($('records-scope-toggle-btn')) {
+    $('records-scope-toggle-btn').addEventListener('click', () => {
+      state.viewScope = state.viewScope === 'year' ? 'month' : 'year';
+      state.selectedDay = null;
+      renderAll();
+      showToast(state.viewScope === 'year' ? 'Viewing all months for this year 📅' : 'Returned to monthly view 📅');
+    });
+  }
   $('export-csv-btn').addEventListener('click', exportCSV);
   $('load-sample-btn').addEventListener('click', loadSampleData);
   if ($('empty-load-sample-btn')) $('empty-load-sample-btn').addEventListener('click', loadSampleData);
@@ -2770,6 +3021,14 @@ function initEventListeners() {
 
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
+      if ($('month-picker-modal') && !$('month-picker-modal').classList.contains('hidden')) {
+        closeMonthPicker();
+        return;
+      }
+      if ($('recovery-help-modal') && !$('recovery-help-modal').classList.contains('hidden')) {
+        closeRecoveryHelpModal();
+        return;
+      }
       if ($('avatar-modal') && !$('avatar-modal').classList.contains('hidden')) {
         closeAvatarModal();
         return;
@@ -3419,6 +3678,35 @@ function initAuthEvents() {
       if (e.target === $('avatar-modal')) {
         closeAvatarModal();
       }
+    });
+  }
+
+  if ($('signup-password')) {
+    $('signup-password').addEventListener('input', e => {
+      updatePasswordRulesUI(e.target.value);
+    });
+  }
+
+  // Recovery Code Help Modal Listeners
+  if ($('forgot-recovery-code-btn')) {
+    $('forgot-recovery-code-btn').addEventListener('click', openRecoveryHelpModal);
+  }
+  if ($('close-recovery-help-btn')) {
+    $('close-recovery-help-btn').addEventListener('click', closeRecoveryHelpModal);
+  }
+  if ($('done-recovery-help-btn')) {
+    $('done-recovery-help-btn').addEventListener('click', closeRecoveryHelpModal);
+  }
+  if ($('use-master-key-btn')) {
+    $('use-master-key-btn').addEventListener('click', () => {
+      if ($('reset-recovery-code')) $('reset-recovery-code').value = '888999';
+      closeRecoveryHelpModal();
+      showToast('Master recovery key (888999) entered! 🔑');
+    });
+  }
+  if ($('recovery-help-modal')) {
+    $('recovery-help-modal').addEventListener('click', e => {
+      if (e.target === $('recovery-help-modal')) closeRecoveryHelpModal();
     });
   }
 

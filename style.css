@@ -3943,6 +3943,258 @@ body.auth-locked .app-layout {
   transform: scale(1.1);
 }
 
+/* ========================================================
+   MONTH PICKER TRIGGER & POPUP MODAL
+   ======================================================== */
+.month-picker-trigger {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-full);
+  padding: 0.42rem 0.95rem;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transition: all var(--transition-fast);
+}
+
+.month-picker-trigger:hover {
+  background: rgba(49, 46, 129, 0.5);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+  transform: translateY(-1px);
+}
+
+.month-picker-trigger .month-caret {
+  color: var(--text-dim);
+  transition: transform var(--transition-fast);
+}
+
+.month-picker-trigger:hover .month-caret {
+  color: #a5b4fc;
+  transform: translateY(2px);
+}
+
+.month-picker-dialog {
+  max-width: 440px;
+  padding: 1.25rem 1.4rem;
+}
+
+.month-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.month-picker-year-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mp-year-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+  min-width: 70px;
+  text-align: center;
+}
+
+.mp-months-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.65rem;
+  margin-bottom: 1.15rem;
+}
+
+.mp-month-btn {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 0.7rem 0.4rem;
+  color: var(--text-main);
+  font-size: 0.88rem;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.mp-month-btn:hover {
+  background: rgba(99, 102, 241, 0.22);
+  border-color: rgba(99, 102, 241, 0.5);
+  transform: translateY(-2px);
+  color: #ffffff;
+}
+
+.mp-month-btn.active {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border-color: #818cf8;
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.5);
+}
+
+.mp-month-btn.current {
+  border-color: rgba(245, 158, 11, 0.6);
+}
+
+.mp-month-btn.current::after {
+  content: 'Current';
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  color: #fbbf24;
+  letter-spacing: 0.04em;
+}
+
+.mp-month-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #34d399;
+  position: absolute;
+  top: 5px;
+  right: 6px;
+}
+
+.month-picker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 0.9rem;
+}
+
+/* ========================================================
+   PASSWORD REQUIREMENTS CHECKLIST
+   ======================================================== */
+.password-rules-checklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.pw-rule-chip {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full);
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all var(--transition-fast);
+}
+
+.pw-rule-chip .rule-icon {
+  font-style: normal;
+  font-weight: 800;
+  font-size: 0.72rem;
+}
+
+.pw-rule-chip.met {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.pw-rule-chip.met .rule-icon {
+  color: #10b981;
+}
+
+/* ========================================================
+   RECOVERY HELP MODAL
+   ======================================================== */
+.recovery-help-dialog {
+  max-width: 480px;
+}
+
+.recovery-help-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin: 1.15rem 0;
+}
+
+.recovery-help-card {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  position: relative;
+}
+
+.recovery-help-card h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+  color: var(--text-main);
+}
+
+.recovery-help-card p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.rh-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #a5b4fc;
+  margin-bottom: 0.4rem;
+}
+
+.accent-code {
+  background: rgba(99, 102, 241, 0.25);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  color: #c7d2fe;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+/* ========================================================
+   ALL-MONTHS SCOPE PILL
+   ======================================================== */
+.type-filter-pill.pill-scope {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #c7d2fe;
+  margin-left: auto;
+}
+
+.type-filter-pill.pill-scope:hover {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.type-filter-pill.pill-scope.active {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border-color: #818cf8;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
+
 
 
 

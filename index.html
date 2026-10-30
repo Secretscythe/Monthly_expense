@@ -39,9 +39,11 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
 
-        <div class="current-month-display">
+        <button type="button" id="open-month-picker-btn" class="current-month-display month-picker-trigger" title="Click to select any month or jump year">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           <span id="current-month-label">October 2026</span>
-        </div>
+          <svg class="month-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
 
         <button type="button" id="next-month-btn" class="nav-btn" aria-label="Next Month" title="Next Month">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -184,8 +186,11 @@
           </div>
         </div>
         <div class="calendar-actions">
-          <button type="button" id="calendar-all-month-btn" class="pill-btn secondary-pill btn-sm" title="View records for entire month">
-            <span>View All Month</span>
+          <button type="button" id="calendar-all-month-btn" class="pill-btn secondary-pill btn-sm" title="Reset selection or choose another month">
+            <span>Reset to Full Month</span>
+          </button>
+          <button type="button" id="calendar-all-months-toggle-btn" class="pill-btn secondary-pill btn-sm" title="Toggle between single month and all months in the year">
+            <span>📅 View All Months</span>
           </button>
         </div>
       </div>
@@ -522,6 +527,7 @@
             <button type="button" id="filter-type-all-btn" class="type-filter-pill active">All</button>
             <button type="button" id="filter-type-deduct-btn" class="type-filter-pill pill-deduct">− Deductions</button>
             <button type="button" id="filter-type-add-btn" class="type-filter-pill pill-add">+ Additions</button>
+            <button type="button" id="records-scope-toggle-btn" class="type-filter-pill pill-scope" title="Toggle between current month and all months">📅 All Months</button>
           </div>
 
           <!-- Category Filter Select -->
@@ -793,7 +799,7 @@
         </div>
 
         <div class="form-group">
-          <label for="signup-password" class="input-label">Password <span class="input-sublabel">(at least 4 characters)</span></label>
+          <label for="signup-password" class="input-label">Password <span class="input-sublabel">(8+ chars, upper, lower, number, special)</span></label>
           <div class="auth-input-wrap with-icon with-end-icon">
             <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             <input type="password" id="signup-password" class="quick-input" placeholder="Choose a secure password" autocomplete="new-password" required />
@@ -801,6 +807,14 @@
               <svg class="eye-icon eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
               <svg class="eye-icon eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
             </button>
+          </div>
+          <!-- Live Password Rules Checklist -->
+          <div class="password-rules-checklist" id="signup-password-rules">
+            <span class="pw-rule-chip" id="pw-rule-length"><i class="rule-icon">○</i> 8+ chars</span>
+            <span class="pw-rule-chip" id="pw-rule-upper"><i class="rule-icon">○</i> Uppercase (A-Z)</span>
+            <span class="pw-rule-chip" id="pw-rule-lower"><i class="rule-icon">○</i> Lowercase (a-z)</span>
+            <span class="pw-rule-chip" id="pw-rule-num"><i class="rule-icon">○</i> Number (0-9)</span>
+            <span class="pw-rule-chip" id="pw-rule-sym"><i class="rule-icon">○</i> Symbol (!@#$)</span>
           </div>
         </div>
 
@@ -858,12 +872,13 @@
         <div class="form-group">
           <div class="input-label-row">
             <label for="reset-recovery-code" class="input-label">6-Digit Recovery Code <span class="input-sublabel">(Given at sign up)</span></label>
+            <button type="button" id="forgot-recovery-code-btn" class="auth-text-link hint-link">Forgot recovery code?</button>
           </div>
           <div class="auth-input-wrap with-icon">
             <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             <input type="text" id="reset-recovery-code" class="quick-input code-digit-input" placeholder="e.g. 654321" maxlength="6" inputmode="numeric" required />
           </div>
-          <p class="input-helper-text">Enter the 6-digit recovery code provided when your account was created.</p>
+          <p class="input-helper-text">Enter the 6-digit recovery code provided at sign-up, or use the master recovery key if authorized.</p>
         </div>
 
         <div class="form-group">
@@ -936,6 +951,78 @@
         </button>
         <button type="button" id="close-recovery-modal-btn" class="pill-btn primary-pill" style="flex:1.2;">
           <span>I've Saved It &bull; Continue</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORGOT RECOVERY CODE HELP MODAL -->
+  <div id="recovery-help-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="recovery-help-title">
+    <div class="modal-dialog glass-card recovery-help-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon-badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.35);">
+            🔑
+          </div>
+          <div>
+            <h2 id="recovery-help-title" class="modal-title">Forgot Your Recovery Code?</h2>
+            <p class="modal-subtitle">Don't worry — you have 2 easy ways to reset your password</p>
+          </div>
+        </div>
+        <button type="button" id="close-recovery-help-btn" class="modal-close-btn" aria-label="Close recovery help">✕</button>
+      </div>
+
+      <div class="recovery-help-body">
+        <div class="recovery-help-card">
+          <div class="rh-badge">👑 Option 1: Admin Reset</div>
+          <h4>Ask Your Workspace Admin</h4>
+          <p>Your workspace administrator (<code>admin@spendflow.app</code>) can view your recovery code or set a new password for you directly from the <strong>Admin Control Panel</strong>.</p>
+        </div>
+
+        <div class="recovery-help-card">
+          <div class="rh-badge">🛡️ Option 2: Emergency Key</div>
+          <h4>Master Recovery Override</h4>
+          <p>For local and self-hosted instances, enter master key <strong class="accent-code">888999</strong> in the recovery code field to reset any account.</p>
+          <button type="button" id="use-master-key-btn" class="pill-btn secondary-pill btn-sm" style="margin-top: 0.5rem;">
+            Auto-fill Master Key (888999)
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-actions-footer">
+        <button type="button" id="done-recovery-help-btn" class="pill-btn primary-pill btn-sm">Back to Password Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MONTH PICKER POPUP MODAL -->
+  <div id="month-picker-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="month-picker-title">
+    <div class="modal-dialog glass-card month-picker-dialog">
+      <div class="month-picker-header">
+        <div class="month-picker-year-nav">
+          <button type="button" id="mp-prev-year-btn" class="nav-btn btn-sm" title="Previous Year">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span id="mp-current-year-label" class="mp-year-title">2026</span>
+          <button type="button" id="mp-next-year-btn" class="nav-btn btn-sm" title="Next Year">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+        <button type="button" id="close-month-picker-btn" class="modal-close-btn" aria-label="Close month picker">✕</button>
+      </div>
+
+      <div class="month-picker-body">
+        <div class="mp-months-grid" id="mp-months-grid">
+          <!-- 12 Month buttons rendered dynamically via JS -->
+        </div>
+      </div>
+
+      <div class="month-picker-footer">
+        <button type="button" id="mp-view-all-year-btn" class="pill-btn secondary-pill btn-sm" title="View all records for this entire year">
+          <span>📅 View Full Year</span>
+        </button>
+        <button type="button" id="mp-jump-today-btn" class="pill-btn primary-pill btn-sm">
+          <span>Jump to Current Month</span>
         </button>
       </div>
     </div>
