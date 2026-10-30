@@ -8,6 +8,8 @@ import socketserver
 import json
 import os
 import smtplib
+import urllib.request
+import urllib.error
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -26,17 +28,39 @@ def load_env():
 
 load_env()
 
+def send_via_resend(api_key, to_email, subject, html_content, text_content):
+    url = 'https://api.resend.com/emails'
+    payload = {
+        'from': 'SpendFlow Security <onboarding@resend.dev>',
+        'to': [to_email],
+        'subject': subject,
+        'html': html_content,
+        'text': text_content
+    }
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
+        'User-Agent': 'SpendFlow-Server/1.0'
+    }
+    req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers=headers, method='POST')
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            resp_body = resp.read().decode('utf-8')
+            print(f"[SpendFlow Resend] ✅ Email delivered via Resend API! {resp_body}")
+            return True, "Verification email sent to your inbox via Resend."
+    except urllib.error.HTTPError as e:
+        err_msg = e.read().decode('utf-8')
+        print(f"[SpendFlow Resend] ❌ HTTP Error {e.code}: {err_msg}")
+        return False, f"Resend error ({e.code}): {err_msg}"
+    except Exception as e:
+        print(f"[SpendFlow Resend] ❌ Network error: {e}")
+        return False, f"Resend network error: {str(e)}"
+
 def send_real_email(to_email, code, email_type='reset'):
     load_env()
+    resend_key = os.environ.get('RESEND_API_KEY', '').strip()
     gmail_user = os.environ.get('GMAIL_USER', '').strip()
     gmail_pass = os.environ.get('GMAIL_APP_PASSWORD', '').strip()
-
-    if not gmail_user or not gmail_pass or 'your_email' in gmail_user:
-        print("\n[SpendFlow SMTP] ⚠️ GMAIL_USER or GMAIL_APP_PASSWORD is not configured in .env.")
-        print(f"[SpendFlow SMTP] Target Email: {to_email}")
-        print(f"[SpendFlow SMTP] Security Code: {code}")
-        print("[SpendFlow SMTP] To send real emails, set GMAIL_USER and GMAIL_APP_PASSWORD in .env\n")
-        return False, "Gmail credentials not configured in .env. Please configure GMAIL_USER and GMAIL_APP_PASSWORD."
 
     is_signup = (email_type == 'signup')
     subject = f"SpendFlow - Welcome! Your Verification Code is {code}" if is_signup else f"SpendFlow - Password Reset Code is {code}"
@@ -182,23 +206,36 @@ The SpendFlow Security Team
 </html>
 """
 
-    part1 = MIMEText(text_content, 'plain')
-    part2 = MIMEText(html_content, 'html')
-    msg.attach(part1)
-    msg.attach(part2)
+    # 1. First priority: Check if Resend API Key is configured
+    if resend_key and resend_key.startswith('re_'):
+        print(f"[SpendFlow] Dispatching via Resend to {to_email}...")
+        return send_via_resend(resend_key, to_email, subject, html_content, text_content)
 
-    try:
-        print(f"[SpendFlow SMTP] Connecting to smtp.gmail.com:587 for recipient {to_email}...")
-        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=15)
-        server.starttls()
-        server.login(gmail_user, gmail_pass)
-        server.sendmail(gmail_user, [to_email], msg.as_string())
-        server.quit()
-        print(f"[SpendFlow SMTP] ✅ Successfully sent verification email to {to_email}!")
-        return True, "Verification email delivered to your inbox."
-    except Exception as e:
-        print(f"[SpendFlow SMTP] ❌ SMTP Error sending to {to_email}: {e}")
-        return False, str(e)
+    # 2. Second priority: Check if Gmail SMTP is configured
+    if gmail_user and gmail_pass and 'your_email' not in gmail_user:
+        part1 = MIMEText(text_content, 'plain')
+        part2 = MIMEText(html_content, 'html')
+        msg.attach(part1)
+        msg.attach(part2)
+
+        try:
+            print(f"[SpendFlow SMTP] Connecting to smtp.gmail.com:587 for recipient {to_email}...")
+            server = smtplib.SMTP('smtp.gmail.com', 587, timeout=15)
+            server.starttls()
+            server.login(gmail_user, gmail_pass)
+            server.sendmail(gmail_user, [to_email], msg.as_string())
+            server.quit()
+            print(f"[SpendFlow SMTP] ✅ Successfully sent verification email to {to_email}!")
+            return True, "Verification email delivered to your inbox."
+        except Exception as e:
+            print(f"[SpendFlow SMTP] ❌ SMTP Error sending to {to_email}: {e}")
+            return False, str(e)
+
+    # 3. Neither is configured
+    print("\n[SpendFlow Email] ⚠️ Neither RESEND_API_KEY nor GMAIL credentials configured in .env.")
+    print(f"[SpendFlow Email] Target Email: {to_email}")
+    print("[SpendFlow Email] To send real emails, set RESEND_API_KEY in .env (get one free at https://resend.com)\n")
+    return False, "Email service not configured. Please add your free RESEND_API_KEY in .env."
 
 
 class SpendFlowHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -216,13 +253,16 @@ class SpendFlowHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/api/status':
             load_env()
+            resend_key = os.environ.get('RESEND_API_KEY', '').strip()
             gmail_user = os.environ.get('GMAIL_USER', '').strip()
             gmail_pass = os.environ.get('GMAIL_APP_PASSWORD', '').strip()
-            is_configured = bool(gmail_user and gmail_pass and 'your_email' not in gmail_user)
+            is_resend = bool(resend_key and resend_key.startswith('re_'))
+            is_gmail = bool(gmail_user and gmail_pass and 'your_email' not in gmail_user)
             self._send_json(200, {
                 'status': 'online',
-                'configured': is_configured,
-                'email': gmail_user if is_configured else None
+                'configured': is_resend or is_gmail,
+                'provider': 'resend' if is_resend else ('gmail' if is_gmail else None),
+                'email': gmail_user if is_gmail else ('Resend Service' if is_resend else None)
             })
             return
         super().do_GET()

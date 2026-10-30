@@ -3629,19 +3629,16 @@ function initAuthEvents() {
           helperText.innerHTML = `<span style="color: #34d399; font-weight: 600;">✓ Verification code sent to ${targetEmail}! Check your inbox.</span>`;
         }
       } else {
-        const isNotConfigured = res && res.message && res.message.toLowerCase().includes('not configured');
+        const isNotConfigured = res && res.message && (res.message.toLowerCase().includes('not configured') || res.message.toLowerCase().includes('no email provider'));
         if (isNotConfigured) {
-          showToast(`⚠️ Gmail SMTP not configured in .env. Your code is: ${user.recoveryCode}`);
+          showToast('⚠️ Email service not configured. Add RESEND_API_KEY in .env.');
           if (helperText) {
-            helperText.innerHTML = `<span style="color: #fbbf24;">(Local Mode) Configure .env with Gmail to send real emails. Code: <strong>${user.recoveryCode}</strong></span>`;
-          }
-          if ($('reset-recovery-code')) {
-            $('reset-recovery-code').value = user.recoveryCode;
+            helperText.innerHTML = '<span style="color: #fbbf24;">Email service not configured. Add <code>RESEND_API_KEY</code> in <code>.env</code> to deliver verification codes.</span>';
           }
         } else {
-          showToast(`Email notice: ${res.message || 'Unable to reach email server.'}`);
+          showToast(`❌ Email delivery failed: ${res.message || 'Unable to deliver email.'}`);
           if (helperText) {
-            helperText.innerHTML = `<span style="color: #f87171;">Email could not be delivered (${res.message || 'offline'}). Code: <strong>${user.recoveryCode}</strong></span>`;
+            helperText.innerHTML = `<span style="color: #f87171;">Email delivery error: ${res.message || 'Check connection'}.</span>`;
           }
         }
       }
