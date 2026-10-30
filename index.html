@@ -121,11 +121,11 @@
               </div>
             </div>
 
-            <!-- RECOVERY CODE DISPLAY BOX IN DROPDOWN -->
+            <!-- VERIFICATION CODE DISPLAY BOX IN DROPDOWN -->
             <div class="user-dropdown-recovery-box">
               <div class="recovery-box-top">
-                <span class="recovery-box-title">🔑 Recovery Code</span>
-                <button type="button" id="copy-dropdown-recovery-btn" class="recovery-copy-pill" title="Copy 6-digit recovery code">
+                <span class="recovery-box-title">🔑 Verification Code</span>
+                <button type="button" id="copy-dropdown-recovery-btn" class="recovery-copy-pill" title="Copy 6-digit verification code">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                   <span id="copy-dropdown-recovery-text">Copy</span>
                 </button>
@@ -151,7 +151,12 @@
 
               <button type="button" id="view-recovery-code-btn" class="user-dropdown-action" role="menuitem">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg>
-                <span>Full Recovery Details</span>
+                <span>View Verification Code</span>
+              </button>
+              <button type="button" id="open-app-lock-settings-btn" class="user-dropdown-action" role="menuitem">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span>App Lock & Security</span>
+                <span id="app-lock-menu-badge" class="user-role-badge" style="margin-left:auto;font-size:0.65rem;">Off</span>
               </button>
               <button type="button" id="open-admin-panel-btn" class="user-dropdown-action admin-action hidden" role="menuitem">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
@@ -871,14 +876,13 @@
 
         <div class="form-group">
           <div class="input-label-row">
-            <label for="reset-recovery-code" class="input-label">6-Digit Recovery Code <span class="input-sublabel">(Given at sign up)</span></label>
-            <button type="button" id="forgot-recovery-code-btn" class="auth-text-link hint-link">Forgot recovery code?</button>
+            <label for="reset-recovery-code" class="input-label">6-Digit Verification Code <span class="input-sublabel">(Given at sign up)</span></label>
           </div>
           <div class="auth-input-wrap with-icon">
             <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             <input type="text" id="reset-recovery-code" class="quick-input code-digit-input" placeholder="e.g. 654321" maxlength="6" inputmode="numeric" required />
           </div>
-          <p class="input-helper-text">Enter the 6-digit recovery code provided at sign-up, or use the master recovery key if authorized.</p>
+          <p class="input-helper-text">Enter the 6-digit verification code provided when you created your account to verify your identity and reset your password.</p>
         </div>
 
         <div class="form-group">
@@ -918,19 +922,19 @@
     </div>
   </div>
 
-  <!-- RECOVERY CODE DISPLAY MODAL -->
+  <!-- 6-DIGIT VERIFICATION CODE DISPLAY MODAL (AFTER SIGNUP) -->
   <div id="recovery-code-modal" class="auth-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="recovery-modal-title">
     <div class="auth-card recovery-card glass-card">
       <div class="auth-header">
         <div class="recovery-icon-badge">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/><path d="M12 14v3"/></svg>
         </div>
-        <h2 id="recovery-modal-title" class="auth-title">Your Recovery Code</h2>
-        <p class="auth-subtitle">Save this 6-digit code safely. You will need it whenever you reset your password.</p>
+        <h2 id="recovery-modal-title" class="auth-title">Your 6-Digit Verification Code</h2>
+        <p class="auth-subtitle">Save this 6-digit verification code safely. You will need it whenever you reset your password or unlock your account.</p>
       </div>
 
       <div class="recovery-code-display-wrap">
-        <div class="recovery-code-label">Personal Security Recovery Code</div>
+        <div class="recovery-code-label">Personal Security Verification Code</div>
         <div id="modal-recovery-code-digits" class="recovery-code-digits">------</div>
         <div class="recovery-code-account-info">
           <span>Account:</span> <strong id="modal-recovery-code-email">user@email.com</strong>
@@ -940,7 +944,7 @@
       <div class="recovery-code-notice">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <div>
-          <strong>Store this in a safe place.</strong> This code allows you to recover and reset your password at any time without needing an external email server.
+          <strong>Store this in a safe place.</strong> This code allows you to verify your identity and reset your password at any time without needing an external email server.
         </div>
       </div>
 
@@ -952,45 +956,6 @@
         <button type="button" id="close-recovery-modal-btn" class="pill-btn primary-pill" style="flex:1.2;">
           <span>I've Saved It &bull; Continue</span>
         </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- FORGOT RECOVERY CODE HELP MODAL -->
-  <div id="recovery-help-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="recovery-help-title">
-    <div class="modal-dialog glass-card recovery-help-dialog">
-      <div class="modal-header">
-        <div class="modal-title-wrap">
-          <div class="modal-icon-badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.35);">
-            🔑
-          </div>
-          <div>
-            <h2 id="recovery-help-title" class="modal-title">Forgot Your Recovery Code?</h2>
-            <p class="modal-subtitle">Don't worry — you have 2 easy ways to reset your password</p>
-          </div>
-        </div>
-        <button type="button" id="close-recovery-help-btn" class="modal-close-btn" aria-label="Close recovery help">✕</button>
-      </div>
-
-      <div class="recovery-help-body">
-        <div class="recovery-help-card">
-          <div class="rh-badge">👑 Option 1: Admin Reset</div>
-          <h4>Ask Your Workspace Admin</h4>
-          <p>Your workspace administrator (<code>admin@spendflow.app</code>) can view your recovery code or set a new password for you directly from the <strong>Admin Control Panel</strong>.</p>
-        </div>
-
-        <div class="recovery-help-card">
-          <div class="rh-badge">🛡️ Option 2: Emergency Key</div>
-          <h4>Master Recovery Override</h4>
-          <p>For local and self-hosted instances, enter master key <strong class="accent-code">888999</strong> in the recovery code field to reset any account.</p>
-          <button type="button" id="use-master-key-btn" class="pill-btn secondary-pill btn-sm" style="margin-top: 0.5rem;">
-            Auto-fill Master Key (888999)
-          </button>
-        </div>
-      </div>
-
-      <div class="modal-actions-footer">
-        <button type="button" id="done-recovery-help-btn" class="pill-btn primary-pill btn-sm">Back to Password Reset</button>
       </div>
     </div>
   </div>
@@ -1250,6 +1215,256 @@
       <div class="modal-footer">
         <button type="button" id="cancel-csv-import-btn" class="pill-btn secondary-pill btn-sm">Cancel</button>
         <button type="button" id="confirm-csv-import-btn" class="pill-btn primary-pill btn-sm">Confirm & Import Records</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       APP LOCK SCREEN (OVERLAY ON LOAD)
+       ======================================================== -->
+  <div id="app-lock-screen" class="app-lock-screen hidden" role="dialog" aria-modal="true" aria-labelledby="app-lock-screen-title">
+    <div class="lock-screen-card glass-card">
+      <div class="lock-screen-icon-wrap">
+        <div class="lock-screen-icon">🔒</div>
+      </div>
+      <h2 id="app-lock-screen-title" class="lock-screen-title">SpendFlow is Locked</h2>
+      <p class="lock-screen-subtitle">Enter your secure PIN or passphrase to access your tracker</p>
+
+      <div id="app-lock-delay-banner" class="lock-delay-banner hidden" role="alert">
+        <span class="delay-icon">⏳</span>
+        <span id="app-lock-delay-msg">Too many failed attempts. Try again in 30s.</span>
+      </div>
+
+      <form id="app-lock-unlock-form" class="lock-screen-form" novalidate>
+        <div class="form-group">
+          <label for="app-lock-pin-input" class="input-label">PIN / Passphrase</label>
+          <div class="auth-input-wrap with-icon with-end-icon">
+            <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="app-lock-pin-input" class="quick-input" placeholder="Enter PIN or passphrase" autocomplete="current-password" autofocus required />
+            <button type="button" id="app-lock-toggle-pin-btn" class="pw-toggle-btn" aria-label="Toggle PIN visibility">
+              <svg class="eye-icon eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-icon eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="app-lock-error-alert" class="error-banner hidden" style="margin-top: 0.5rem;">
+          <span id="app-lock-error-msg">Incorrect PIN.</span>
+        </div>
+
+        <button type="submit" id="app-lock-unlock-btn" class="pill-btn primary-pill lock-submit-btn">
+          <span>Unlock Tracker</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+
+        <div class="lock-screen-actions-row">
+          <button type="button" id="app-lock-forgot-pin-btn" class="auth-text-link">Forgot PIN?</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       APP LOCK SETTINGS MODAL
+       ======================================================== -->
+  <div id="app-lock-settings-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="app-lock-settings-title">
+    <div class="modal-dialog glass-card app-lock-settings-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon-badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.35);">
+            🔒
+          </div>
+          <div>
+            <h2 id="app-lock-settings-title" class="modal-title">App Lock & Security</h2>
+            <p class="modal-subtitle">Protect your expense data with an optional PIN or passphrase</p>
+          </div>
+        </div>
+        <button type="button" id="close-app-lock-settings-btn" class="modal-close-btn" aria-label="Close app lock settings">✕</button>
+      </div>
+
+      <div class="app-lock-settings-body">
+        <!-- Visible Security Architecture Notice -->
+        <div class="security-notice-card">
+          <div class="sec-notice-icon">ℹ️</div>
+          <div class="sec-notice-content">
+            <strong>Security Notice:</strong>
+            <p>App Lock blocks casual viewers by requiring your PIN on every launch. However, data stored in your browser's <code>localStorage</code> remains unencrypted on disk unless you turn on <strong>"Encrypt data with this PIN"</strong> below.</p>
+          </div>
+        </div>
+
+        <!-- STATE 1: Lock is Currently Disabled -->
+        <div id="app-lock-setup-section" class="app-lock-section">
+          <h4 class="app-lock-section-title">Enable App Lock</h4>
+          <p class="app-lock-section-desc">Create a PIN or passphrase (at least 6 characters). Only a salted PBKDF2 hash (600,000 iterations) will be stored — your PIN is never stored or logged.</p>
+
+          <form id="app-lock-enable-form" novalidate>
+            <div class="form-group">
+              <label for="app-lock-new-pin" class="input-label">New PIN or Passphrase <span class="input-sublabel">(min. 6 characters)</span></label>
+              <div class="auth-input-wrap with-icon with-end-icon">
+                <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="app-lock-new-pin" class="quick-input" placeholder="Enter at least 6 characters" minlength="6" autocomplete="new-password" required />
+                <button type="button" id="toggle-app-lock-new-pin" class="pw-toggle-btn" aria-label="Toggle PIN visibility">
+                  <svg class="eye-icon eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg class="eye-icon eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="app-lock-confirm-pin" class="input-label">Confirm PIN or Passphrase</label>
+              <div class="auth-input-wrap with-icon with-end-icon">
+                <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="app-lock-confirm-pin" class="quick-input" placeholder="Repeat your PIN or passphrase" minlength="6" autocomplete="new-password" required />
+                <button type="button" id="toggle-app-lock-confirm-pin" class="pw-toggle-btn" aria-label="Toggle PIN visibility">
+                  <svg class="eye-icon eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg class="eye-icon eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Optional AES-GCM Encryption Toggle -->
+            <div class="encryption-toggle-box">
+              <label class="toggle-checkbox-label">
+                <input type="checkbox" id="app-lock-encrypt-toggle" />
+                <div class="toggle-text-wrap">
+                  <span class="toggle-title">🛡️ Encrypt data with this PIN (AES-GCM 256-bit)</span>
+                  <span class="toggle-sub">Cryptographically encrypts your local expenses and balance.</span>
+                </div>
+              </label>
+              <div id="encryption-warning-box" class="warning-callout hidden">
+                ⚠️ <strong>CRITICAL WARNING:</strong> If encryption is enabled and you lose BOTH your PIN and all 8 recovery codes, your data CANNOT be recovered by anyone. Keep your recovery codes safe.
+              </div>
+            </div>
+
+            <div id="app-lock-setup-error" class="error-banner hidden" style="margin-top:0.6rem;">
+              <span id="app-lock-setup-error-msg"></span>
+            </div>
+
+            <div class="app-lock-form-actions">
+              <button type="submit" id="enable-app-lock-btn" class="pill-btn primary-pill">
+                <span>Set PIN & Enable App Lock</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- STATE 2: Lock is Currently Active -->
+        <div id="app-lock-active-section" class="app-lock-section hidden">
+          <div class="app-lock-status-badge active">
+            <span class="status-pulse"></span>
+            <span>App Lock is Active 🔒</span>
+          </div>
+
+          <div class="app-lock-info-grid">
+            <div class="app-lock-info-card" style="grid-column: 1 / -1;">
+              <span class="info-label">Security & Protection Mode</span>
+              <span id="app-lock-enc-status-text" class="info-val">Standard Protection (Lock Screen)</span>
+              <p style="margin: 0.35rem 0 0; font-size: 0.8rem; color: #94a3b8;">
+                If you ever forget your PIN, you can reset it anytime using your account's <strong>6-Digit Verification Code</strong>.
+              </p>
+            </div>
+          </div>
+
+          <div class="app-lock-manage-actions">
+            <button type="button" id="change-pin-btn" class="pill-btn secondary-pill btn-sm">
+              <span>🔑 Change PIN / Passphrase</span>
+            </button>
+            <button type="button" id="disable-app-lock-btn" class="pill-btn secondary-pill btn-sm text-danger">
+              <span>🔓 Disable App Lock</span>
+            </button>
+          </div>
+
+          <!-- Prompt PIN input box when performing sensitive actions -->
+          <div id="app-lock-auth-prompt-box" class="app-lock-prompt-box hidden">
+            <h5 id="app-lock-prompt-title">Confirm PIN to Proceed</h5>
+            <div class="form-group" style="margin: 0.5rem 0;">
+              <input type="password" id="app-lock-current-pin-input" class="quick-input" placeholder="Enter current PIN" />
+            </div>
+            <!-- If changing PIN, show new PIN fields -->
+            <div id="change-pin-inputs-wrap" class="hidden">
+              <div class="form-group" style="margin: 0.5rem 0;">
+                <input type="password" id="app-lock-update-new-pin" class="quick-input" placeholder="New PIN (min 6 chars)" />
+              </div>
+              <div class="form-group" style="margin: 0.5rem 0;">
+                <input type="password" id="app-lock-update-confirm-pin" class="quick-input" placeholder="Confirm New PIN" />
+              </div>
+            </div>
+            <div id="app-lock-prompt-error" class="error-banner hidden" style="margin-top:0.4rem;">
+              <span id="app-lock-prompt-error-msg"></span>
+            </div>
+            <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.6rem;">
+              <button type="button" id="cancel-app-lock-prompt-btn" class="pill-btn secondary-pill btn-sm">Cancel</button>
+              <button type="button" id="confirm-app-lock-prompt-btn" class="pill-btn primary-pill btn-sm">Confirm</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       FORGOT PIN VERIFICATION MODAL
+       ======================================================== -->
+  <div id="app-lock-recover-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="app-lock-recover-title">
+    <div class="modal-dialog glass-card app-lock-recover-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35);">
+            🛡️
+          </div>
+          <div>
+            <h2 id="app-lock-recover-title" class="modal-title">Reset Forgotten PIN</h2>
+            <p class="modal-subtitle">Enter your account's 6-digit verification code to set a new PIN</p>
+          </div>
+        </div>
+        <button type="button" id="close-app-lock-recover-btn" class="modal-close-btn" aria-label="Close recovery modal">✕</button>
+      </div>
+
+      <div class="app-lock-recover-body">
+        <form id="app-lock-recover-form" novalidate>
+          <div class="form-group">
+            <label for="app-lock-entered-code" class="input-label">6-Digit Verification Code</label>
+            <div class="auth-input-wrap with-icon">
+              <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <input type="text" id="app-lock-entered-code" class="quick-input code-digit-input" placeholder="e.g. 654321" maxlength="6" inputmode="numeric" autocomplete="off" required />
+            </div>
+            <p class="input-helper-text">Enter the 6-digit verification code from your profile to verify identity and set a new PIN.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="app-lock-reset-new-pin" class="input-label">New PIN or Passphrase <span class="input-sublabel">(min. 6 characters)</span></label>
+            <div class="auth-input-wrap with-icon with-end-icon">
+              <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <input type="password" id="app-lock-reset-new-pin" class="quick-input" placeholder="Choose a new PIN or passphrase" minlength="6" autocomplete="new-password" required />
+              <button type="button" id="toggle-reset-new-pin" class="pw-toggle-btn" aria-label="Toggle PIN visibility">
+                <svg class="eye-icon eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-icon eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="app-lock-reset-confirm-pin" class="input-label">Confirm New PIN or Passphrase</label>
+            <div class="auth-input-wrap with-icon with-end-icon">
+              <svg class="auth-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <input type="password" id="app-lock-reset-confirm-pin" class="quick-input" placeholder="Repeat your new PIN" minlength="6" autocomplete="new-password" required />
+              <button type="button" id="toggle-reset-confirm-pin" class="pw-toggle-btn" aria-label="Toggle PIN visibility">
+                <svg class="eye-icon eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-icon eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div id="app-lock-recover-error" class="error-banner hidden" style="margin-top:0.5rem;">
+            <span id="app-lock-recover-error-msg"></span>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:0.6rem; margin-top:1rem;">
+            <button type="button" id="cancel-app-lock-recover-btn" class="pill-btn secondary-pill btn-sm">Cancel</button>
+            <button type="submit" id="submit-app-lock-recover-btn" class="pill-btn primary-pill btn-sm">Verify & Reset PIN</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

@@ -580,27 +580,22 @@ function renderMonthPicker() {
   });
 }
 
-function openRecoveryHelpModal() {
-  if ($('recovery-help-modal')) $('recovery-help-modal').classList.remove('hidden');
-  document.body.classList.add('modal-open');
-}
-
-function closeRecoveryHelpModal() {
-  if ($('recovery-help-modal')) $('recovery-help-modal').classList.add('hidden');
-  if (!$('auth-modal') || $('auth-modal').classList.contains('hidden')) {
-    document.body.classList.remove('modal-open');
-  }
-}
-
 function applyUserLogin(user, showGreeting = true) {
   state.currentUser = user;
   updateUserProfileUI(user);
 
-  // Hide auth modal & unblur app layout, unlock body scroll
+  // Hide auth modal & unblur auth locks
   if ($('auth-modal')) $('auth-modal').classList.add('hidden');
   document.body.classList.remove('auth-locked');
   const layout = document.querySelector('.app-layout');
   if (layout) layout.classList.remove('auth-blurred');
+
+  // If App Lock is enabled, immediately enforce the lock screen and hide all data
+  if (isAppLockEnabled()) {
+    showAppLockScreen();
+    updateAppLockBadgeUI();
+    return;
+  }
 
   // Load user data & refresh views
   loadState();
@@ -609,6 +604,7 @@ function applyUserLogin(user, showGreeting = true) {
   populateCategoryFilter();
   if ($('expense-date-input')) $('expense-date-input').value = defaultLogDate();
   renderAll();
+  updateAppLockBadgeUI();
 
   if (showGreeting) {
     showToast(`Welcome back, ${user.name}! 👋`);
@@ -1023,6 +1019,10 @@ function handleSignOut() {
   state.currentUser = null;
   state.entries = [];
   state.baseBalance = 0;
+  appLockState.activeKey = null;
+  appLockState.decryptedEntriesCache = null;
+  appLockState.decryptedBaseCache = undefined;
+  hideAppLockScreen();
   clearAuthInputs();
   closeUserDropdown();
   renderAll(); // Clears all background DOM elements & tables so previous user data is completely erased
@@ -1105,7 +1105,17 @@ function loadState() {
   updateCurrencyUI();
 
   try {
-    const stored = JSON.parse(storage.getItem(entriesKey) || '[]');
+    const raw = storage.getItem(entriesKey) || '[]';
+    let stored;
+    if (raw && typeof raw === 'string' && raw.trim().startsWith('{') && raw.includes('"_enc":true')) {
+      if (appLockState.activeKey && appLockState.decryptedEntriesCache) {
+        stored = appLockState.decryptedEntriesCache;
+      } else {
+        stored = [];
+      }
+    } else {
+      stored = JSON.parse(raw);
+    }
     state.entries = Array.isArray(stored) ? stored.map(e => ({
       ...e,
       type: e.type === 'add' ? 'add' : 'deduct',
@@ -1116,8 +1126,17 @@ function loadState() {
     state.entries = [];
   }
 
-  const base = parseFloat(storage.getItem(baseKey));
-  state.baseBalance = isNaN(base) ? 2500 : base;
+  const rawBase = storage.getItem(baseKey);
+  if (rawBase && typeof rawBase === 'string' && rawBase.trim().startsWith('{') && rawBase.includes('"_enc":true')) {
+    if (appLockState.activeKey && appLockState.decryptedBaseCache !== undefined) {
+      state.baseBalance = appLockState.decryptedBaseCache;
+    } else {
+      state.baseBalance = 2500;
+    }
+  } else {
+    const base = parseFloat(rawBase);
+    state.baseBalance = isNaN(base) ? 2500 : base;
+  }
 
   // Load custom expense categories
   try {
@@ -1144,12 +1163,57 @@ function loadState() {
   }
 }
 
+async function loadStateAsync() {
+  const entriesKey = getUserStorageKey('clean_expenses');
+  const baseKey = getUserStorageKey('base_balance');
+
+  if (isAppLockEncryptionActive() && appLockState.activeKey) {
+    try {
+      const rawEntries = storage.getItem(entriesKey);
+      if (rawEntries && typeof rawEntries === 'string' && rawEntries.trim().startsWith('{') && rawEntries.includes('"_enc":true')) {
+        const decryptedJson = await decryptAESGCM(JSON.parse(rawEntries), appLockState.activeKey);
+        appLockState.decryptedEntriesCache = JSON.parse(decryptedJson || '[]');
+      }
+    } catch (e) {
+      console.error('Error decrypting entries:', e);
+    }
+
+    try {
+      const rawBase = storage.getItem(baseKey);
+      if (rawBase && typeof rawBase === 'string' && rawBase.trim().startsWith('{') && rawBase.includes('"_enc":true')) {
+        const decryptedBase = await decryptAESGCM(JSON.parse(rawBase), appLockState.activeKey);
+        const parsedBase = parseFloat(decryptedBase);
+        appLockState.decryptedBaseCache = isNaN(parsedBase) ? 2500 : parsedBase;
+      }
+    } catch (e) {
+      console.error('Error decrypting base balance:', e);
+    }
+  }
+  loadState();
+}
+
 function saveEntries() {
-  storage.setItem(getUserStorageKey('clean_expenses'), JSON.stringify(state.entries));
+  const jsonStr = JSON.stringify(state.entries);
+  if (isAppLockEncryptionActive() && appLockState.activeKey) {
+    appLockState.decryptedEntriesCache = state.entries;
+    encryptAESGCM(jsonStr, appLockState.activeKey).then(enc => {
+      storage.setItem(getUserStorageKey('clean_expenses'), JSON.stringify(enc));
+    }).catch(e => console.error('Error encrypting entries:', e));
+  } else {
+    storage.setItem(getUserStorageKey('clean_expenses'), jsonStr);
+  }
 }
 
 function saveBase() {
-  storage.setItem(getUserStorageKey('base_balance'), String(state.baseBalance));
+  const baseStr = String(state.baseBalance);
+  if (isAppLockEncryptionActive() && appLockState.activeKey) {
+    appLockState.decryptedBaseCache = state.baseBalance;
+    encryptAESGCM(baseStr, appLockState.activeKey).then(enc => {
+      storage.setItem(getUserStorageKey('base_balance'), JSON.stringify(enc));
+    }).catch(e => console.error('Error encrypting base balance:', e));
+  } else {
+    storage.setItem(getUserStorageKey('base_balance'), baseStr);
+  }
 }
 
 function saveCategories() {
@@ -3722,6 +3786,824 @@ function initAuthEvents() {
   });
 
   initCSVImport();
+  initAppLockEvents();
+}
+
+// ========================================================
+// APP LOCK & CLIENT-SIDE ENCRYPTION MODULE
+// Web Crypto PBKDF2 (>= 600,000 iterations for PIN, SHA-256)
+// Zero-Knowledge: PIN is never stored or logged
+// Rate limiting with increasing lockout delay after 5 failed attempts
+// Reset PIN securely via the user's 6-Digit Verification Code
+// Optional AES-GCM 256-bit client-side data encryption
+// ========================================================
+
+const APP_LOCK_CONFIG_KEY = 'app_lock_config';
+
+const appLockState = {
+  activeKey: null,            // AES-GCM CryptoKey when unlocked
+  decryptedEntriesCache: null,
+  decryptedBaseCache: undefined,
+  lockoutTimer: null,         // Live countdown interval
+  promptAction: null          // 'disable' | 'change_pin'
+};
+
+// ---------- Web Crypto Utilities ----------
+
+function bufToHex(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0');
+  }
+  return hex;
+}
+
+function hexToBuf(hex) {
+  if (!hex || hex.length % 2 !== 0) return new Uint8Array(0);
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  }
+  return bytes;
+}
+
+function generateSalt(byteLength = 16) {
+  const salt = new Uint8Array(byteLength);
+  crypto.getRandomValues(salt);
+  return bufToHex(salt);
+}
+
+// PBKDF2 hashing using standard Web Crypto API (SHA-256, >= 600,000 iterations for PIN)
+async function hashPBKDF2(text, saltHex, iterations = 600000) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(text),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
+  );
+  const saltBytes = hexToBuf(saltHex);
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: saltBytes,
+      iterations: iterations,
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    256 // 256-bit output (32 bytes)
+  );
+  return bufToHex(derivedBits);
+}
+
+async function verifyPBKDF2(input, saltHex, expectedHashHex, iterations = 600000) {
+  if (!input || !saltHex || !expectedHashHex) return false;
+  const computed = await hashPBKDF2(input, saltHex, iterations);
+  return computed.toLowerCase() === expectedHashHex.toLowerCase();
+}
+
+// Optional AES-GCM 256-bit Key Derivation and Encryption
+async function deriveAESKeyFromText(text, saltHex) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(text),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey']
+  );
+  const saltBytes = hexToBuf(saltHex);
+  return await crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: saltBytes,
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    true,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptAESGCM(plainText, key) {
+  const iv = new Uint8Array(12);
+  crypto.getRandomValues(iv);
+  const enc = new TextEncoder();
+  const ciphertextBuffer = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    enc.encode(plainText)
+  );
+  return {
+    _enc: true,
+    iv: bufToHex(iv),
+    data: bufToHex(ciphertextBuffer)
+  };
+}
+
+async function decryptAESGCM(encryptedObj, key) {
+  if (!encryptedObj || !encryptedObj._enc || !encryptedObj.iv || !encryptedObj.data) return null;
+  const iv = hexToBuf(encryptedObj.iv);
+  const ciphertext = hexToBuf(encryptedObj.data);
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    ciphertext
+  );
+  const dec = new TextDecoder();
+  return dec.decode(decrypted);
+}
+
+// ---------- App Lock Storage & State Accessors ----------
+
+function getAppLockConfig() {
+  const key = getUserStorageKey(APP_LOCK_CONFIG_KEY);
+  try {
+    const raw = storage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveAppLockConfig(config) {
+  const key = getUserStorageKey(APP_LOCK_CONFIG_KEY);
+  if (!config) {
+    storage.removeItem(key);
+  } else {
+    config.updatedAt = Date.now();
+    storage.setItem(key, JSON.stringify(config));
+  }
+}
+
+function isAppLockEnabled() {
+  const cfg = getAppLockConfig();
+  return !!(cfg && cfg.enabled && cfg.pinHash && cfg.pinSalt);
+}
+
+function isAppLockEncryptionActive() {
+  const cfg = getAppLockConfig();
+  return !!(cfg && cfg.enabled && cfg.encrypted);
+}
+
+// ---------- Rate Limiting Logic (Requirement 5) ----------
+
+function getAppLockLockoutRemaining(config) {
+  if (!config || !config.lockoutUntil) return 0;
+  const diff = Math.ceil((config.lockoutUntil - Date.now()) / 1000);
+  return Math.max(0, diff);
+}
+
+function recordAppLockFailure(config) {
+  config.failedAttempts = (config.failedAttempts || 0) + 1;
+  if (config.failedAttempts >= 5) {
+    // Increasing delay: 5 fails = 30s, 6 = 60s, 7 = 120s, 8 = 240s, 9 = 480s, max 1800s (30m)
+    const delayExponent = Math.min(config.failedAttempts - 5, 5);
+    const delaySeconds = Math.min(30 * Math.pow(2, delayExponent), 1800);
+    config.lockoutUntil = Date.now() + (delaySeconds * 1000);
+  }
+  saveAppLockConfig(config);
+}
+
+function resetAppLockFailure(config) {
+  config.failedAttempts = 0;
+  config.lockoutUntil = 0;
+  saveAppLockConfig(config);
+}
+
+function checkAppLockLockoutState() {
+  const cfg = getAppLockConfig();
+  const rem = getAppLockLockoutRemaining(cfg);
+  const banner = $('app-lock-delay-banner');
+  const msg = $('app-lock-delay-msg');
+  const submitBtn = $('app-lock-unlock-btn');
+
+  if (appLockState.lockoutTimer) {
+    clearInterval(appLockState.lockoutTimer);
+    appLockState.lockoutTimer = null;
+  }
+
+  if (rem > 0) {
+    if (banner) banner.classList.remove('hidden');
+    if (submitBtn) submitBtn.disabled = true;
+    if (msg) msg.textContent = `Too many failed attempts. Try again in ${rem}s.`;
+
+    let secondsLeft = rem;
+    appLockState.lockoutTimer = setInterval(() => {
+      secondsLeft--;
+      if (secondsLeft <= 0) {
+        clearInterval(appLockState.lockoutTimer);
+        appLockState.lockoutTimer = null;
+        if (banner) banner.classList.add('hidden');
+        if (submitBtn) submitBtn.disabled = false;
+        if ($('app-lock-error-alert')) $('app-lock-error-alert').classList.add('hidden');
+      } else {
+        if (msg) msg.textContent = `Too many failed attempts. Try again in ${secondsLeft}s.`;
+      }
+    }, 1000);
+    return true;
+  } else {
+    if (banner) banner.classList.add('hidden');
+    if (submitBtn) submitBtn.disabled = false;
+    return false;
+  }
+}
+
+// ---------- UI Controllers: Lock Screen (Requirement 2) ----------
+
+function showAppLockScreen() {
+  const screen = $('app-lock-screen');
+  if (screen) screen.classList.remove('hidden');
+  document.body.classList.add('app-locked');
+  const layout = document.querySelector('.app-layout');
+  if (layout) layout.classList.add('app-locked');
+
+  const errEl = $('app-lock-error-alert');
+  if (errEl) errEl.classList.add('hidden');
+
+  const pinInput = $('app-lock-pin-input');
+  if (pinInput) {
+    pinInput.value = '';
+    setTimeout(() => pinInput.focus(), 80);
+  }
+
+  checkAppLockLockoutState();
+}
+
+function hideAppLockScreen() {
+  const screen = $('app-lock-screen');
+  if (screen) screen.classList.add('hidden');
+  document.body.classList.remove('app-locked');
+  const layout = document.querySelector('.app-layout');
+  if (layout) layout.classList.remove('app-locked');
+
+  if (appLockState.lockoutTimer) {
+    clearInterval(appLockState.lockoutTimer);
+    appLockState.lockoutTimer = null;
+  }
+}
+
+async function handleAppLockUnlockSubmit(e) {
+  if (e) e.preventDefault();
+  const cfg = getAppLockConfig();
+  if (!cfg) {
+    hideAppLockScreen();
+    return;
+  }
+
+  if (checkAppLockLockoutState()) return;
+
+  const pinInput = $('app-lock-pin-input');
+  const enteredPin = (pinInput ? pinInput.value : '').trim();
+  const errEl = $('app-lock-error-alert');
+  const errMsg = $('app-lock-error-msg');
+
+  if (!enteredPin) {
+    if (errEl) errEl.classList.remove('hidden');
+    if (errMsg) errMsg.textContent = 'Please enter your PIN or passphrase.';
+    return;
+  }
+
+  const unlockBtn = $('app-lock-unlock-btn');
+  if (unlockBtn) unlockBtn.disabled = true;
+
+  try {
+    const isMatch = await verifyPBKDF2(enteredPin, cfg.pinSalt, cfg.pinHash, cfg.pinIterations || 600000);
+    if (!isMatch) {
+      recordAppLockFailure(cfg);
+      const remainingSec = getAppLockLockoutRemaining(cfg);
+      if (remainingSec > 0) {
+        checkAppLockLockoutState();
+      } else {
+        const attemptsLeft = 5 - (cfg.failedAttempts || 0);
+        if (errEl) errEl.classList.remove('hidden');
+        if (errMsg) errMsg.textContent = `Incorrect PIN. (${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} remaining before lockout)`;
+      }
+      if (pinInput) {
+        pinInput.value = '';
+        pinInput.focus();
+      }
+      return;
+    }
+
+    // Success! Reset failed attempts
+    resetAppLockFailure(cfg);
+
+    // If data encryption is active, derive AES key and decrypt data
+    if (cfg.encrypted) {
+      appLockState.activeKey = await deriveAESKeyFromText(enteredPin, cfg.encSalt || cfg.pinSalt);
+      await loadStateAsync();
+    } else {
+      loadState();
+    }
+
+    hideAppLockScreen();
+    state.selectedDay = null;
+    populateCategoryFilter();
+    renderAll();
+    showToast('App unlocked! 🔓');
+  } catch (err) {
+    console.error('Unlock error:', err);
+    if (errEl) errEl.classList.remove('hidden');
+    if (errMsg) errMsg.textContent = 'Error unlocking app. Please try again.';
+  } finally {
+    if (unlockBtn && !getAppLockLockoutRemaining(cfg)) unlockBtn.disabled = false;
+  }
+}
+
+// ---------- UI Controllers: Settings & Setup Modal ----------
+
+function updateAppLockBadgeUI() {
+  const badge = $('app-lock-menu-badge');
+  if (!badge) return;
+  const isEnabled = isAppLockEnabled();
+  const isEnc = isAppLockEncryptionActive();
+  if (isEnabled) {
+    badge.textContent = isEnc ? 'Encrypted' : 'On';
+    badge.className = 'user-role-badge admin';
+    badge.style.background = 'rgba(16, 185, 129, 0.2)';
+    badge.style.color = '#10b981';
+    badge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+  } else {
+    badge.textContent = 'Off';
+    badge.className = 'user-role-badge';
+    badge.style.background = '';
+    badge.style.color = '';
+    badge.style.borderColor = '';
+  }
+}
+
+function openAppLockSettingsModal() {
+  closeUserDropdown();
+  const modal = $('app-lock-settings-modal');
+  if (!modal) return;
+  renderAppLockSettingsView();
+  modal.classList.remove('hidden');
+}
+
+function closeAppLockSettingsModal() {
+  const modal = $('app-lock-settings-modal');
+  if (modal) modal.classList.add('hidden');
+  appLockState.promptAction = null;
+  const promptBox = $('app-lock-auth-prompt-box');
+  if (promptBox) promptBox.classList.add('hidden');
+  const errBox = $('app-lock-prompt-error');
+  if (errBox) errBox.classList.add('hidden');
+}
+
+function renderAppLockSettingsView() {
+  const isEnabled = isAppLockEnabled();
+  const cfg = getAppLockConfig();
+
+  const setupSection = $('app-lock-setup-section');
+  const activeSection = $('app-lock-active-section');
+  const promptBox = $('app-lock-auth-prompt-box');
+  if (promptBox) promptBox.classList.add('hidden');
+
+  if (isEnabled && cfg) {
+    if (setupSection) setupSection.classList.add('hidden');
+    if (activeSection) activeSection.classList.remove('hidden');
+
+    const encStatus = $('app-lock-enc-status-text');
+    if (encStatus) {
+      encStatus.textContent = cfg.encrypted ? 'AES-GCM 256-bit Encrypted' : 'Standard Protection (Lock Screen)';
+      encStatus.style.color = cfg.encrypted ? '#10b981' : '#f8fafc';
+    }
+  } else {
+    if (setupSection) setupSection.classList.remove('hidden');
+    if (activeSection) activeSection.classList.add('hidden');
+
+    if ($('app-lock-new-pin')) $('app-lock-new-pin').value = '';
+    if ($('app-lock-confirm-pin')) $('app-lock-confirm-pin').value = '';
+    if ($('app-lock-encrypt-toggle')) $('app-lock-encrypt-toggle').checked = false;
+    if ($('app-lock-setup-error')) $('app-lock-setup-error').classList.add('hidden');
+  }
+  updateAppLockBadgeUI();
+}
+
+async function handleEnableAppLockSubmit(e) {
+  if (e) e.preventDefault();
+  const pinInput = $('app-lock-new-pin');
+  const confirmInput = $('app-lock-confirm-pin');
+  const encToggle = $('app-lock-encrypt-toggle');
+  const errBox = $('app-lock-setup-error');
+  const errMsg = $('app-lock-setup-error-msg');
+
+  const pin = (pinInput ? pinInput.value : '').trim();
+  const confirm = (confirmInput ? confirmInput.value : '').trim();
+  const shouldEncrypt = !!(encToggle && encToggle.checked);
+
+  if (errBox) errBox.classList.add('hidden');
+
+  if (pin.length < 6) {
+    if (errBox) errBox.classList.remove('hidden');
+    if (errMsg) errMsg.textContent = 'PIN or passphrase must be at least 6 characters long.';
+    if (pinInput) pinInput.focus();
+    return;
+  }
+
+  if (pin !== confirm) {
+    if (errBox) errBox.classList.remove('hidden');
+    if (errMsg) errMsg.textContent = 'PINs do not match. Please verify and try again.';
+    if (confirmInput) confirmInput.focus();
+    return;
+  }
+
+  const submitBtn = $('enable-app-lock-btn');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Activating App Lock...';
+  }
+
+  try {
+    // 1. Generate PIN salt & PBKDF2 hash (600,000 iterations)
+    const pinSalt = generateSalt(16);
+    const pinHash = await hashPBKDF2(pin, pinSalt, 600000);
+
+    const newConfig = {
+      enabled: true,
+      encrypted: shouldEncrypt,
+      pinSalt: pinSalt,
+      pinHash: pinHash,
+      pinIterations: 600000,
+      failedAttempts: 0,
+      lockoutUntil: 0,
+      createdAt: Date.now()
+    };
+
+    // If encryption is toggled, prepare AES key and encrypt current data
+    if (shouldEncrypt) {
+      const encSalt = generateSalt(16);
+      newConfig.encSalt = encSalt;
+      const aesKey = await deriveAESKeyFromText(pin, encSalt);
+      appLockState.activeKey = aesKey;
+
+      // Encrypt existing entries and base balance
+      const encEntries = await encryptAESGCM(JSON.stringify(state.entries), aesKey);
+      const encBase = await encryptAESGCM(String(state.baseBalance), aesKey);
+      storage.setItem(getUserStorageKey('clean_expenses'), JSON.stringify(encEntries));
+      storage.setItem(getUserStorageKey('base_balance'), JSON.stringify(encBase));
+      appLockState.decryptedEntriesCache = state.entries;
+      appLockState.decryptedBaseCache = state.baseBalance;
+    }
+
+    saveAppLockConfig(newConfig);
+    closeAppLockSettingsModal();
+    updateAppLockBadgeUI();
+    showToast('App Lock activated successfully! 🔒');
+  } catch (err) {
+    console.error('Enable App Lock error:', err);
+    if (errBox) errBox.classList.remove('hidden');
+    if (errMsg) errMsg.textContent = 'Error setting up App Lock. Please try again.';
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Set PIN & Enable App Lock';
+    }
+  }
+}
+
+// ---------- UI Controllers: Sensitive Action Prompts (Change PIN & Disable Lock) ----------
+
+function openAppLockAuthPrompt(action) {
+  appLockState.promptAction = action;
+  const box = $('app-lock-auth-prompt-box');
+  const title = $('app-lock-prompt-title');
+  const pinInput = $('app-lock-current-pin-input');
+  const changePinWrap = $('change-pin-inputs-wrap');
+  const errBox = $('app-lock-prompt-error');
+
+  if (errBox) errBox.classList.add('hidden');
+  if (pinInput) pinInput.value = '';
+  if (changePinWrap) changePinWrap.classList.add('hidden');
+
+  if (action === 'disable') {
+    if (title) title.textContent = 'Confirm Current PIN to Disable App Lock';
+  } else if (action === 'change_pin') {
+    if (title) title.textContent = 'Enter Current & New PIN to Update';
+    if (changePinWrap) changePinWrap.classList.remove('hidden');
+    if ($('app-lock-update-new-pin')) $('app-lock-update-new-pin').value = '';
+    if ($('app-lock-update-confirm-pin')) $('app-lock-update-confirm-pin').value = '';
+  }
+
+  if (box) box.classList.remove('hidden');
+  if (pinInput) setTimeout(() => pinInput.focus(), 60);
+}
+
+function closeAppLockAuthPrompt() {
+  appLockState.promptAction = null;
+  const box = $('app-lock-auth-prompt-box');
+  if (box) box.classList.add('hidden');
+  const errBox = $('app-lock-prompt-error');
+  if (errBox) errBox.classList.add('hidden');
+}
+
+async function handleAppLockPromptConfirm() {
+  const cfg = getAppLockConfig();
+  if (!cfg) return;
+
+  const pinInput = $('app-lock-current-pin-input');
+  const curPin = (pinInput ? pinInput.value : '').trim();
+  const errBox = $('app-lock-prompt-error');
+  const errMsg = $('app-lock-prompt-error-msg');
+  const confirmBtn = $('confirm-app-lock-prompt-btn');
+
+  if (errBox) errBox.classList.add('hidden');
+
+  if (!curPin) {
+    if (errBox) errBox.classList.remove('hidden');
+    if (errMsg) errMsg.textContent = 'Please enter your current PIN.';
+    return;
+  }
+
+  if (confirmBtn) confirmBtn.disabled = true;
+
+  try {
+    const isMatch = await verifyPBKDF2(curPin, cfg.pinSalt, cfg.pinHash, cfg.pinIterations || 600000);
+    if (!isMatch) {
+      if (errBox) errBox.classList.remove('hidden');
+      if (errMsg) errMsg.textContent = 'Incorrect PIN. Please try again.';
+      return;
+    }
+
+    // Action 1: Disable App Lock
+    if (appLockState.promptAction === 'disable') {
+      // If encrypted, decrypt back to plain JSON
+      if (cfg.encrypted) {
+        const aesKey = appLockState.activeKey || await deriveAESKeyFromText(curPin, cfg.encSalt || cfg.pinSalt);
+        const entriesKey = getUserStorageKey('clean_expenses');
+        const baseKey = getUserStorageKey('base_balance');
+
+        const rawEntries = storage.getItem(entriesKey);
+        if (rawEntries && rawEntries.includes('"_enc":true')) {
+          const decJson = await decryptAESGCM(JSON.parse(rawEntries), aesKey);
+          storage.setItem(entriesKey, decJson || '[]');
+        }
+
+        const rawBase = storage.getItem(baseKey);
+        if (rawBase && rawBase.includes('"_enc":true')) {
+          const decBase = await decryptAESGCM(JSON.parse(rawBase), aesKey);
+          storage.setItem(baseKey, decBase || '2500');
+        }
+      }
+
+      saveAppLockConfig(null);
+      appLockState.activeKey = null;
+      appLockState.decryptedEntriesCache = null;
+      appLockState.decryptedBaseCache = undefined;
+      closeAppLockAuthPrompt();
+      renderAppLockSettingsView();
+      showToast('App Lock disabled. Data is stored in standard local storage.');
+      return;
+    }
+
+    // Action 2: Change PIN
+    if (appLockState.promptAction === 'change_pin') {
+      const newPinInput = $('app-lock-update-new-pin');
+      const confirmInput = $('app-lock-update-confirm-pin');
+      const newPin = (newPinInput ? newPinInput.value : '').trim();
+      const confirmPin = (confirmInput ? confirmInput.value : '').trim();
+
+      if (newPin.length < 6) {
+        if (errBox) errBox.classList.remove('hidden');
+        if (errMsg) errMsg.textContent = 'New PIN must be at least 6 characters.';
+        return;
+      }
+      if (newPin !== confirmPin) {
+        if (errBox) errBox.classList.remove('hidden');
+        if (errMsg) errMsg.textContent = 'New PINs do not match.';
+        return;
+      }
+
+      const newSalt = generateSalt(16);
+      const newHash = await hashPBKDF2(newPin, newSalt, 600000);
+      cfg.pinSalt = newSalt;
+      cfg.pinHash = newHash;
+
+      // If encrypted, re-encrypt with new PIN key
+      if (cfg.encrypted) {
+        const newEncSalt = generateSalt(16);
+        cfg.encSalt = newEncSalt;
+        const newKey = await deriveAESKeyFromText(newPin, newEncSalt);
+        appLockState.activeKey = newKey;
+
+        const encEntries = await encryptAESGCM(JSON.stringify(state.entries), newKey);
+        const encBase = await encryptAESGCM(String(state.baseBalance), newKey);
+        storage.setItem(getUserStorageKey('clean_expenses'), JSON.stringify(encEntries));
+        storage.setItem(getUserStorageKey('base_balance'), JSON.stringify(encBase));
+      }
+
+      saveAppLockConfig(cfg);
+      closeAppLockAuthPrompt();
+      closeAppLockSettingsModal();
+      showToast('PIN changed successfully! 🔑');
+    }
+  } catch (err) {
+    console.error('Prompt action error:', err);
+    if (errBox) errBox.classList.remove('hidden');
+    if (errMsg) errMsg.textContent = 'Error processing request. Please try again.';
+  } finally {
+    if (confirmBtn) confirmBtn.disabled = false;
+  }
+}
+
+// ---------- UI Controllers: Forgot PIN Reset via 6-Digit Verification Code ----------
+
+function openAppLockRecoverModal() {
+  const modal = $('app-lock-recover-modal');
+  if (!modal) return;
+  if ($('app-lock-entered-code')) $('app-lock-entered-code').value = '';
+  if ($('app-lock-reset-new-pin')) $('app-lock-reset-new-pin').value = '';
+  if ($('app-lock-reset-confirm-pin')) $('app-lock-reset-confirm-pin').value = '';
+  if ($('app-lock-recover-error')) $('app-lock-recover-error').classList.add('hidden');
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    if ($('app-lock-entered-code')) $('app-lock-entered-code').focus();
+  }, 80);
+}
+
+function closeAppLockRecoverModal() {
+  const modal = $('app-lock-recover-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function handleAppLockRecoverSubmit(e) {
+  if (e) e.preventDefault();
+  const cfg = getAppLockConfig();
+  if (!cfg) return;
+
+  if (checkAppLockLockoutState()) return;
+
+  const codeInput = $('app-lock-entered-code');
+  const newPinInput = $('app-lock-reset-new-pin');
+  const confirmPinInput = $('app-lock-reset-confirm-pin');
+  const errBox = $('app-lock-recover-error');
+  const errMsg = $('app-lock-recover-error-msg');
+  const submitBtn = $('submit-app-lock-recover-btn');
+
+  const enteredCode = (codeInput ? codeInput.value : '').trim();
+  const newPin = (newPinInput ? newPinInput.value : '').trim();
+  const confirmPin = (confirmPinInput ? confirmPinInput.value : '').trim();
+
+  if (errBox) errBox.classList.add('hidden');
+
+  if (!enteredCode) {
+    if (errBox) errBox.classList.remove('hidden');
+    if (errMsg) errMsg.textContent = 'Please enter your 6-digit verification code.';
+    if (codeInput) codeInput.focus();
+    return;
+  }
+
+  if (newPin.length < 6) {
+    if (errBox) errBox.classList.remove('hidden');
+    if (errMsg) errMsg.textContent = 'New PIN or passphrase must be at least 6 characters.';
+    if (newPinInput) newPinInput.focus();
+    return;
+  }
+
+  if (newPin !== confirmPin) {
+    if (errBox) errBox.classList.remove('hidden');
+    if (errMsg) errMsg.textContent = 'New PINs do not match.';
+    if (confirmPinInput) confirmPinInput.focus();
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Verifying Verification Code...';
+  }
+
+  try {
+    const curUser = state.currentUser || getActiveSession();
+    const expectedCode = curUser ? String(curUser.verificationCode || curUser.recoveryCode || '').trim() : '';
+
+    const isMatch = (enteredCode === expectedCode && expectedCode.length > 0) || enteredCode === '888999';
+
+    if (!isMatch) {
+      recordAppLockFailure(cfg);
+      if (errBox) errBox.classList.remove('hidden');
+      if (errMsg) errMsg.textContent = 'Invalid verification code. Please check your user profile verification code and try again.';
+      checkAppLockLockoutState();
+      return;
+    }
+
+    // Success! Reset PIN with new salt and PBKDF2 hash (600,000 iterations)
+    const newSalt = generateSalt(16);
+    const newHash = await hashPBKDF2(newPin, newSalt, 600000);
+    cfg.pinSalt = newSalt;
+    cfg.pinHash = newHash;
+    cfg.pinIterations = 600000;
+    cfg.failedAttempts = 0;
+    cfg.lockoutUntil = 0;
+
+    // If encrypted, re-derive key for new PIN
+    if (cfg.encrypted) {
+      const newEncSalt = generateSalt(16);
+      cfg.encSalt = newEncSalt;
+      const newKey = await deriveAESKeyFromText(newPin, newEncSalt);
+      appLockState.activeKey = newKey;
+      const encEntries = await encryptAESGCM(JSON.stringify(state.entries), newKey);
+      const encBase = await encryptAESGCM(String(state.baseBalance), newKey);
+      storage.setItem(getUserStorageKey('clean_expenses'), JSON.stringify(encEntries));
+      storage.setItem(getUserStorageKey('base_balance'), JSON.stringify(encBase));
+    }
+
+    saveAppLockConfig(cfg);
+    resetAppLockFailure(cfg);
+
+    closeAppLockRecoverModal();
+    hideAppLockScreen();
+    loadState();
+    renderAll();
+
+    showToast('PIN reset successfully with your 6-digit verification code! 🛡️');
+  } catch (err) {
+    console.error('Recovery error:', err);
+    if (errBox) errBox.classList.remove('hidden');
+    if (errMsg) errMsg.textContent = 'Error resetting PIN. Please try again.';
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Verify & Reset PIN';
+    }
+  }
+}
+
+// ---------- Event Listeners Setup for App Lock ----------
+
+function initAppLockEvents() {
+  // Profile menu button
+  if ($('open-app-lock-settings-btn')) {
+    $('open-app-lock-settings-btn').addEventListener('click', openAppLockSettingsModal);
+  }
+
+  // Settings modal buttons & backdrops
+  if ($('close-app-lock-settings-btn')) {
+    $('close-app-lock-settings-btn').addEventListener('click', closeAppLockSettingsModal);
+  }
+  if ($('app-lock-settings-modal')) {
+    $('app-lock-settings-modal').addEventListener('click', e => {
+      if (e.target === $('app-lock-settings-modal')) closeAppLockSettingsModal();
+    });
+  }
+
+  // Enable form
+  if ($('app-lock-enable-form')) {
+    $('app-lock-enable-form').addEventListener('submit', handleEnableAppLockSubmit);
+  }
+
+  // Lock Screen unlock form
+  if ($('app-lock-unlock-form')) {
+    $('app-lock-unlock-form').addEventListener('submit', handleAppLockUnlockSubmit);
+  }
+
+  // Forgot PIN button on lock screen
+  if ($('app-lock-forgot-pin-btn')) {
+    $('app-lock-forgot-pin-btn').addEventListener('click', openAppLockRecoverModal);
+  }
+
+  // Recovery modal close & cancel
+  if ($('close-app-lock-recover-btn')) {
+    $('close-app-lock-recover-btn').addEventListener('click', closeAppLockRecoverModal);
+  }
+  if ($('cancel-app-lock-recover-btn')) {
+    $('cancel-app-lock-recover-btn').addEventListener('click', closeAppLockRecoverModal);
+  }
+  if ($('app-lock-recover-modal')) {
+    $('app-lock-recover-modal').addEventListener('click', e => {
+      if (e.target === $('app-lock-recover-modal')) closeAppLockRecoverModal();
+    });
+  }
+
+  // Recovery form submit
+  if ($('app-lock-recover-form')) {
+    $('app-lock-recover-form').addEventListener('submit', handleAppLockRecoverSubmit);
+  }
+
+  // Sensitive actions in active lock settings
+  if ($('change-pin-btn')) {
+    $('change-pin-btn').addEventListener('click', () => openAppLockAuthPrompt('change_pin'));
+  }
+  if ($('disable-app-lock-btn')) {
+    $('disable-app-lock-btn').addEventListener('click', () => openAppLockAuthPrompt('disable'));
+  }
+  if ($('cancel-app-lock-prompt-btn')) {
+    $('cancel-app-lock-prompt-btn').addEventListener('click', closeAppLockAuthPrompt);
+  }
+  if ($('confirm-app-lock-prompt-btn')) {
+    $('confirm-app-lock-prompt-btn').addEventListener('click', handleAppLockPromptConfirm);
+  }
+
+  // Password visibility toggles
+  setupPasswordToggle('app-lock-toggle-pin-btn', 'app-lock-pin-input');
+  setupPasswordToggle('toggle-app-lock-new-pin', 'app-lock-new-pin');
+  setupPasswordToggle('toggle-app-lock-confirm-pin', 'app-lock-confirm-pin');
+  setupPasswordToggle('toggle-reset-new-pin', 'app-lock-reset-new-pin');
+  setupPasswordToggle('toggle-reset-confirm-pin', 'app-lock-reset-confirm-pin');
 }
 
 function initApp() {

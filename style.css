@@ -4194,6 +4194,275 @@ body.auth-locked .app-layout {
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
 }
 
+/* ========================================================
+   APP LOCK SCREEN & SECURITY MODALS
+   ======================================================== */
+.app-locked .app-layout {
+  filter: blur(28px) grayscale(60%);
+  pointer-events: none;
+  user-select: none;
+}
+
+.app-lock-screen {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 29, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.lock-screen-card {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  padding: 2.2rem 1.8rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.lock-screen-icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(129, 140, 248, 0.1));
+  border: 2px solid rgba(99, 102, 241, 0.4);
+  margin: 0 auto 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.35);
+}
+
+.lock-screen-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 0.35rem;
+}
+
+.lock-screen-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 1.5rem;
+}
+
+.lock-delay-banner {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.8rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.lock-submit-btn {
+  width: 100%;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-top: 1rem;
+}
+
+.lock-screen-actions-row {
+  margin-top: 1.15rem;
+  display: flex;
+  justify-content: center;
+}
+
+/* App Lock Settings Modal */
+.app-lock-settings-dialog {
+  max-width: 500px;
+}
+
+.app-lock-settings-body {
+  padding: 1.25rem 0.5rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.security-notice-card {
+  display: flex;
+  gap: 0.75rem;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+}
+
+.sec-notice-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.sec-notice-content strong {
+  display: block;
+  font-size: 0.82rem;
+  color: #e2e8f0;
+  margin-bottom: 0.2rem;
+}
+
+.sec-notice-content p {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.app-lock-section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.35rem;
+}
+
+.app-lock-section-desc {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  line-height: 1.45;
+  margin-bottom: 1rem;
+}
+
+.encryption-toggle-box {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+  margin: 0.9rem 0;
+}
+
+.toggle-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  cursor: pointer;
+}
+
+.toggle-checkbox-label input[type="checkbox"] {
+  margin-top: 0.25rem;
+  width: 17px;
+  height: 17px;
+  accent-color: #6366f1;
+}
+
+.toggle-text-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.toggle-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.toggle-sub {
+  font-size: 0.74rem;
+  color: var(--text-dim);
+}
+
+.warning-callout {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-sm);
+  color: #fde68a;
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.app-lock-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.app-lock-status-badge.active {
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.status-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.app-lock-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.app-lock-info-card {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.info-label {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.3rem;
+}
+
+.info-val {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.app-lock-manage-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.app-lock-prompt-box {
+  margin-top: 1rem;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+}
+
+.app-lock-prompt-box h5 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #c7d2fe;
+  margin: 0;
+}
+
+
+
+
 
 
 
