@@ -626,7 +626,7 @@ function closeAuthModal() {
   if (layout) layout.classList.remove('auth-blurred');
 }
 
-function switchAuthTab(mode) {
+function switchAuthTab(mode, preserveInputs = false) {
   const isSignIn = mode === 'signin';
   const isSignUp = mode === 'signup';
   const isReset = mode === 'reset';
@@ -647,7 +647,9 @@ function switchAuthTab(mode) {
   }
 
   hideAuthErrors();
-  clearAuthInputs();
+  if (!preserveInputs) {
+    clearAuthInputs();
+  }
 
   if (isSignIn) {
     setTimeout(() => { if ($('signin-email')) $('signin-email').focus(); }, 60);
@@ -1042,7 +1044,7 @@ function handleResetPassword(emailOrUsername, recoveryCode, newPassword, confirm
   }
 
   setTimeout(() => {
-    switchAuthTab('signin');
+    switchAuthTab('signin', true);
     const userEmail = user.email || lowerIdent;
     if ($('signin-email')) $('signin-email').value = userEmail;
     if ($('signin-password')) {
