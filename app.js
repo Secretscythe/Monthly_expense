@@ -3572,14 +3572,25 @@ function initAuthEvents() {
   }
 
   if ($('reset-form')) {
-    $('reset-form').addEventListener('submit', e => {
-      e.preventDefault();
+    const triggerReset = () => {
       const email = $('reset-email') ? $('reset-email').value : '';
       const recoveryCode = $('reset-recovery-code') ? $('reset-recovery-code').value : '';
       const newPw = $('reset-new-password') ? $('reset-new-password').value : '';
       const confirmPw = $('reset-confirm-password') ? $('reset-confirm-password').value : '';
       handleResetPassword(email, recoveryCode, newPw, confirmPw);
+    };
+
+    $('reset-form').addEventListener('submit', e => {
+      e.preventDefault();
+      triggerReset();
     });
+
+    if ($('reset-submit-btn')) {
+      $('reset-submit-btn').addEventListener('click', e => {
+        e.preventDefault();
+        triggerReset();
+      });
+    }
   }
 
   if ($('send-reset-code-btn')) {
