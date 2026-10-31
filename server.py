@@ -56,8 +56,50 @@ def send_via_resend(api_key, to_email, subject, html_content, text_content):
         print(f"[SpendFlow Resend] ❌ Network error: {e}")
         return False, f"Resend network error: {str(e)}"
 
+def send_via_emailjs(service_id, template_id, public_key, private_key, to_email, code, subject, intro):
+    url = 'https://api.emailjs.com/api/v1.0/email/send'
+    payload = {
+        'service_id': service_id,
+        'template_id': template_id,
+        'user_id': public_key,
+        'template_params': {
+            'to_email': to_email,
+            'email': to_email,
+            'code': code,
+            'verification_code': code,
+            'subject': subject,
+            'message': f"{intro}\n\nYour 6-digit verification code is: {code}\n\nThis code is valid for 10 minutes."
+        }
+    }
+    if private_key:
+        payload['accessToken'] = private_key
+
+    headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'SpendFlow-Server/1.0'
+    }
+    req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers=headers, method='POST')
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            resp_body = resp.read().decode('utf-8')
+            print(f"[SpendFlow EmailJS] ✅ Email delivered via EmailJS to {to_email}! {resp_body}")
+            return True, f"Verification code sent to {to_email} via EmailJS."
+    except urllib.error.HTTPError as e:
+        err_msg = e.read().decode('utf-8')
+        print(f"[SpendFlow EmailJS] ❌ HTTP Error {e.code}: {err_msg}")
+        return False, f"EmailJS error ({e.code}): {err_msg}"
+    except Exception as e:
+        print(f"[SpendFlow EmailJS] ❌ Network error: {e}")
+        return False, f"EmailJS network error: {str(e)}"
+
+
 def send_real_email(to_email, code, email_type='reset'):
     load_env()
+    emailjs_service = os.environ.get('EMAILJS_SERVICE_ID', '').strip()
+    emailjs_template = os.environ.get('EMAILJS_TEMPLATE_ID', '').strip()
+    emailjs_public = os.environ.get('EMAILJS_PUBLIC_KEY', '').strip()
+    emailjs_private = os.environ.get('EMAILJS_PRIVATE_KEY', '').strip()
+
     resend_key = os.environ.get('RESEND_API_KEY', '').strip()
     gmail_user = os.environ.get('GMAIL_USER', '').strip()
     gmail_pass = os.environ.get('GMAIL_APP_PASSWORD', '').strip()
@@ -206,12 +248,17 @@ The SpendFlow Security Team
 </html>
 """
 
-    # 1. First priority: Check if Resend API Key is configured
+    # 1. First priority: Check if EmailJS is configured (delivers to ANY email without domain restrictions)
+    if emailjs_service and emailjs_template and emailjs_public:
+        print(f"[SpendFlow] Dispatching via EmailJS to {to_email}...")
+        return send_via_emailjs(emailjs_service, emailjs_template, emailjs_public, emailjs_private, to_email, code, subject, intro)
+
+    # 2. Second priority: Check if Resend API Key is configured
     if resend_key and resend_key.startswith('re_'):
         print(f"[SpendFlow] Dispatching via Resend to {to_email}...")
         return send_via_resend(resend_key, to_email, subject, html_content, text_content)
 
-    # 2. Second priority: Check if Gmail SMTP is configured
+    # 3. Third priority: Check if Gmail SMTP is configured
     if gmail_user and gmail_pass and 'your_email' not in gmail_user:
         part1 = MIMEText(text_content, 'plain')
         part2 = MIMEText(html_content, 'html')
@@ -231,11 +278,11 @@ The SpendFlow Security Team
             print(f"[SpendFlow SMTP] ❌ SMTP Error sending to {to_email}: {e}")
             return False, str(e)
 
-    # 3. Neither is configured
-    print("\n[SpendFlow Email] ⚠️ Neither RESEND_API_KEY nor GMAIL credentials configured in .env.")
+    # 4. None configured
+    print("\n[SpendFlow Email] ⚠️ No email service configured in .env.")
     print(f"[SpendFlow Email] Target Email: {to_email}")
-    print("[SpendFlow Email] To send real emails, set RESEND_API_KEY in .env (get one free at https://resend.com)\n")
-    return False, "Email service not configured. Please add your free RESEND_API_KEY in .env."
+    print("[SpendFlow Email] Configure EmailJS or Resend in .env to deliver real verification codes.\n")
+    return False, "Email service not configured. Please add EmailJS or Resend credentials in .env."
 
 
 class SpendFlowHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -253,16 +300,23 @@ class SpendFlowHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/api/status':
             load_env()
+            emailjs_service = os.environ.get('EMAILJS_SERVICE_ID', '').strip()
+            emailjs_template = os.environ.get('EMAILJS_TEMPLATE_ID', '').strip()
+            emailjs_public = os.environ.get('EMAILJS_PUBLIC_KEY', '').strip()
             resend_key = os.environ.get('RESEND_API_KEY', '').strip()
             gmail_user = os.environ.get('GMAIL_USER', '').strip()
             gmail_pass = os.environ.get('GMAIL_APP_PASSWORD', '').strip()
+
+            is_emailjs = bool(emailjs_service and emailjs_template and emailjs_public)
             is_resend = bool(resend_key and resend_key.startswith('re_'))
             is_gmail = bool(gmail_user and gmail_pass and 'your_email' not in gmail_user)
+
+            provider = 'emailjs' if is_emailjs else ('resend' if is_resend else ('gmail' if is_gmail else None))
             self._send_json(200, {
                 'status': 'online',
-                'configured': is_resend or is_gmail,
-                'provider': 'resend' if is_resend else ('gmail' if is_gmail else None),
-                'email': gmail_user if is_gmail else ('Resend Service' if is_resend else None)
+                'configured': is_emailjs or is_resend or is_gmail,
+                'provider': provider,
+                'email': 'EmailJS Service' if is_emailjs else (gmail_user if is_gmail else ('Resend Service' if is_resend else None))
             })
             return
         super().do_GET()
