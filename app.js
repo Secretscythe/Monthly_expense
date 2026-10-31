@@ -1033,7 +1033,7 @@ function handleResetPassword(emailOrUsername, recoveryCode, newPassword, confirm
     state.currentUser.password = pwd;
   }
 
-  showToast('Password updated successfully! 🎉 You can now sign in.');
+  showToast('Password updated successfully! 🎉 Redirecting to sign in...');
   const successAlert = $('reset-success-alert');
   if (successAlert) {
     successAlert.classList.remove('hidden');
@@ -1043,10 +1043,14 @@ function handleResetPassword(emailOrUsername, recoveryCode, newPassword, confirm
 
   setTimeout(() => {
     switchAuthTab('signin');
-    if ($('signin-email')) $('signin-email').value = user.email || lowerIdent;
-    if ($('signin-password')) $('signin-password').focus();
+    const userEmail = user.email || lowerIdent;
+    if ($('signin-email')) $('signin-email').value = userEmail;
+    if ($('signin-password')) {
+      $('signin-password').value = '';
+      $('signin-password').focus();
+    }
     if (successAlert) successAlert.classList.add('hidden');
-  }, 1200);
+  }, 900);
 }
 
 function handleSignOut() {
