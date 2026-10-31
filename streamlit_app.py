@@ -36,7 +36,10 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 # Bridge Streamlit Cloud Secrets into environment if present
 if hasattr(st, "secrets"):
     try:
-        for k in ["RESEND_API_KEY", "GMAIL_USER", "GMAIL_APP_PASSWORD"]:
+        for k in [
+            "EMAILJS_SERVICE_ID", "EMAILJS_TEMPLATE_ID", "EMAILJS_PUBLIC_KEY", "EMAILJS_PRIVATE_KEY",
+            "RESEND_API_KEY", "GMAIL_USER", "GMAIL_APP_PASSWORD"
+        ]:
             if k in st.secrets:
                 os.environ[k] = str(st.secrets[k])
     except Exception:
