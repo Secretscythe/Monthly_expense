@@ -896,7 +896,16 @@
           </div>
         </div>
 
-        <button type="submit" id="reset-submit-btn" class="pill-btn primary-pill auth-submit-btn">
+        <div id="reset-error-alert-bottom" class="auth-alert error hidden" role="alert" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          <span id="reset-error-msg-bottom"></span>
+        </div>
+        <div id="reset-success-alert-bottom" class="auth-alert success hidden" role="alert" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span id="reset-success-msg-bottom">Password updated successfully! Redirecting...</span>
+        </div>
+
+        <button type="submit" id="reset-submit-btn" class="pill-btn primary-pill auth-submit-btn" onclick="handleResetSubmit(event)">
           <span>Reset Password</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>

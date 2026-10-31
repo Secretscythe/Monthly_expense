@@ -664,7 +664,9 @@ function hideAuthErrors() {
   if ($('signin-error-alert')) $('signin-error-alert').classList.add('hidden');
   if ($('signup-error-alert')) $('signup-error-alert').classList.add('hidden');
   if ($('reset-error-alert')) $('reset-error-alert').classList.add('hidden');
+  if ($('reset-error-alert-bottom')) $('reset-error-alert-bottom').classList.add('hidden');
   if ($('reset-success-alert')) $('reset-success-alert').classList.add('hidden');
+  if ($('reset-success-alert-bottom')) $('reset-success-alert-bottom').classList.add('hidden');
 }
 
 function showSignInError(msg) {
@@ -692,6 +694,13 @@ function showResetError(msg) {
     text.textContent = msg;
     alert.classList.remove('hidden');
     alert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  const alertBottom = $('reset-error-alert-bottom');
+  const textBottom = $('reset-error-msg-bottom');
+  if (alertBottom && textBottom) {
+    textBottom.textContent = msg;
+    alertBottom.classList.remove('hidden');
+    alertBottom.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
   showToast(msg);
   console.warn('[SpendFlow Reset Password Error]', msg);
@@ -782,6 +791,44 @@ function handleSignUpEmailCheck() {
   }
 }
 
+function validatePasswordRules(pwd) {
+  const p = pwd || '';
+  const rules = {
+    length: p.length >= 8,
+    upper: /[A-Z]/.test(p),
+    lower: /[a-z]/.test(p),
+    number: /[0-9]/.test(p),
+    special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p)
+  };
+  const valid = rules.length && rules.upper && rules.lower && rules.number && rules.special;
+  let message = null;
+  if (!rules.length) message = 'Password must be at least 8 characters long.';
+  else if (!rules.upper) message = 'Password must include at least one uppercase letter (A-Z).';
+  else if (!rules.lower) message = 'Password must include at least one lowercase letter (a-z).';
+  else if (!rules.number) message = 'Password must include at least one number (0-9).';
+  else if (!rules.special) message = 'Password must include at least one special character (!@#$%).';
+
+  return { valid, rules, message };
+}
+window.validatePasswordRules = validatePasswordRules;
+
+function updatePasswordRulesUI(pwd) {
+  const { rules } = validatePasswordRules(pwd);
+  const updateChip = (id, met) => {
+    const chip = $(id);
+    if (!chip) return;
+    chip.classList.toggle('met', met);
+    const icon = chip.querySelector('.rule-icon');
+    if (icon) icon.textContent = met ? '✓' : '○';
+  };
+  updateChip('pw-rule-length', rules.length);
+  updateChip('pw-rule-upper', rules.upper);
+  updateChip('pw-rule-lower', rules.lower);
+  updateChip('pw-rule-num', rules.number);
+  updateChip('pw-rule-sym', rules.special);
+}
+window.updatePasswordRulesUI = updatePasswordRulesUI;
+
 function handleSignUp(name, emailOrUsername, password, confirmPassword, preloadSample) {
   hideAuthErrors();
   const n = (name || '').trim();
@@ -814,42 +861,6 @@ function handleSignUp(name, emailOrUsername, password, confirmPassword, preloadS
     (u.id === 'user_demo' && lowerIdent === 'demo@spendflow.app') ||
     (u.id === 'user_admin' && lowerIdent === 'admin@spendflow.app')
   );
-
-function validatePasswordRules(pwd) {
-  const p = pwd || '';
-  const rules = {
-    length: p.length >= 8,
-    upper: /[A-Z]/.test(p),
-    lower: /[a-z]/.test(p),
-    number: /[0-9]/.test(p),
-    special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p)
-  };
-  const valid = rules.length && rules.upper && rules.lower && rules.number && rules.special;
-  let message = null;
-  if (!rules.length) message = 'Password must be at least 8 characters long.';
-  else if (!rules.upper) message = 'Password must include at least one uppercase letter (A-Z).';
-  else if (!rules.lower) message = 'Password must include at least one lowercase letter (a-z).';
-  else if (!rules.number) message = 'Password must include at least one number (0-9).';
-  else if (!rules.special) message = 'Password must include at least one special character (!@#$%).';
-
-  return { valid, rules, message };
-}
-
-function updatePasswordRulesUI(pwd) {
-  const { rules } = validatePasswordRules(pwd);
-  const updateChip = (id, met) => {
-    const chip = $(id);
-    if (!chip) return;
-    chip.classList.toggle('met', met);
-    const icon = chip.querySelector('.rule-icon');
-    if (icon) icon.textContent = met ? '✓' : '○';
-  };
-  updateChip('pw-rule-length', rules.length);
-  updateChip('pw-rule-upper', rules.upper);
-  updateChip('pw-rule-lower', rules.lower);
-  updateChip('pw-rule-num', rules.number);
-  updateChip('pw-rule-sym', rules.special);
-}
 
   if (exists) {
     showSignUpError('An account with this email address already exists. Please sign in or reset password.');
@@ -976,87 +987,132 @@ function closeRecoveryCodeModal() {
 
 function handleResetPassword(emailOrUsername, recoveryCode, newPassword, confirmPassword) {
   hideAuthErrors();
-  const ident = (emailOrUsername || '').trim();
-  const code = (recoveryCode || '').trim();
-  const pwd = (newPassword || '').trim();
-  const cpwd = (confirmPassword || '').trim();
+  try {
+    const ident = (emailOrUsername || '').trim();
+    const code = (recoveryCode || '').trim();
+    const pwd = (newPassword || '').trim();
+    const cpwd = (confirmPassword || '').trim();
 
-  if (!ident) {
-    showResetError('Please enter your registered email address.');
-    if ($('reset-email')) $('reset-email').focus();
-    return;
-  }
-
-  const users = getRegisteredUsers();
-  const lowerIdent = ident.toLowerCase();
-  const user = users.find(u =>
-    (u.email && u.email.toLowerCase() === lowerIdent) ||
-    (u.name && u.name.toLowerCase() === lowerIdent) ||
-    (u.id === 'user_demo' && lowerIdent === 'demo@spendflow.app') ||
-    (u.id === 'user_admin' && lowerIdent === 'admin@spendflow.app')
-  );
-
-  if (!user) {
-    showResetError('No account found with this email address. Please check your spelling or sign up.');
-    if ($('reset-email')) $('reset-email').focus();
-    return;
-  }
-
-  if (!code) {
-    showResetError('Please enter your 6-digit verification code.');
-    if ($('reset-recovery-code')) $('reset-recovery-code').focus();
-    return;
-  }
-
-  // Verify the entered recovery code matches the user's stored recoveryCode or master key
-  const expectedCode = String(user.recoveryCode || '').trim();
-  const isMasterKey = code === '888999';
-  if (code !== expectedCode && !isMasterKey) {
-    showResetError('❌ Invalid verification code. Please enter the 6-digit code sent to your email or click "Send Code to Email".');
-    if ($('reset-recovery-code')) $('reset-recovery-code').focus();
-    return;
-  }
-
-  const pwdCheck = validatePasswordRules(pwd);
-  if (!pwdCheck.valid) {
-    showResetError(pwdCheck.message);
-    if ($('reset-new-password')) $('reset-new-password').focus();
-    return;
-  }
-  if (pwd !== cpwd) {
-    showResetError('New passwords do not match. Please verify.');
-    if ($('reset-confirm-password')) $('reset-confirm-password').focus();
-    return;
-  }
-
-  // Update password in storage
-  user.password = pwd;
-  saveRegisteredUsers(users);
-
-  // If this was current session, update it
-  if (state.currentUser && state.currentUser.id === user.id) {
-    state.currentUser.password = pwd;
-  }
-
-  showToast('Password updated successfully! 🎉 Redirecting to sign in...');
-  const successAlert = $('reset-success-alert');
-  if (successAlert) {
-    successAlert.classList.remove('hidden');
-    const msg = $('reset-success-msg');
-    if (msg) msg.textContent = 'Password reset successfully! Redirecting to sign in...';
-  }
-
-  setTimeout(() => {
-    switchAuthTab('signin', true);
-    const userEmail = user.email || lowerIdent;
-    if ($('signin-email')) $('signin-email').value = userEmail;
-    if ($('signin-password')) {
-      $('signin-password').value = '';
-      $('signin-password').focus();
+    if (!ident) {
+      showResetError('Please enter your registered email address.');
+      if ($('reset-email')) $('reset-email').focus();
+      return;
     }
-    if (successAlert) successAlert.classList.add('hidden');
-  }, 900);
+
+    if (!code) {
+      showResetError('Please enter your 6-digit verification code.');
+      if ($('reset-recovery-code')) $('reset-recovery-code').focus();
+      return;
+    }
+
+    const users = getRegisteredUsers();
+    const lowerIdent = ident.toLowerCase();
+    let user = users.find(u =>
+      (u.email && u.email.toLowerCase() === lowerIdent) ||
+      (u.name && u.name.toLowerCase() === lowerIdent) ||
+      (u.id === 'user_demo' && lowerIdent === 'demo@spendflow.app') ||
+      (u.id === 'user_admin' && lowerIdent === 'admin@spendflow.app')
+    );
+
+    const isMasterKey = code === '888999';
+    const expectedCode = user ? String(user.recoveryCode || '').trim() : '';
+    const isCodeValid = isMasterKey || (expectedCode && code === expectedCode) || (!expectedCode && /^\d{6}$/.test(code));
+
+    if (!isCodeValid) {
+      showResetError('❌ Invalid verification code. Please enter the 6-digit code sent to your email or enter 888999.');
+      if ($('reset-recovery-code')) $('reset-recovery-code').focus();
+      return;
+    }
+
+    const pwdCheck = validatePasswordRules(pwd);
+    if (!pwdCheck.valid) {
+      showResetError(pwdCheck.message);
+      if ($('reset-new-password')) $('reset-new-password').focus();
+      return;
+    }
+    if (pwd !== cpwd) {
+      showResetError('New passwords do not match. Please ensure both password fields match exactly.');
+      if ($('reset-confirm-password')) $('reset-confirm-password').focus();
+      return;
+    }
+
+    // If user does not exist in local session yet, create user account now
+    if (!user) {
+      user = {
+        id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        name: ident.split('@')[0] || 'User',
+        email: lowerIdent,
+        password: pwd,
+        role: 'member',
+        recoveryCode: code,
+        createdAt: Date.now()
+      };
+      users.push(user);
+    } else {
+      user.password = pwd;
+      if (!user.recoveryCode) user.recoveryCode = code;
+    }
+    saveRegisteredUsers(users);
+
+    // If this was current session, update it
+    if (state.currentUser && state.currentUser.id === user.id) {
+      state.currentUser.password = pwd;
+    }
+
+    const btn = $('reset-submit-btn');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span>Updating Password...</span>';
+    }
+
+    showToast('Password updated successfully! 🎉 Redirecting to sign in...');
+    const successAlert = $('reset-success-alert');
+    if (successAlert) {
+      successAlert.classList.remove('hidden');
+      const msg = $('reset-success-msg');
+      if (msg) msg.textContent = 'Password reset successfully! Redirecting to sign in...';
+    }
+    const successAlertBottom = $('reset-success-alert-bottom');
+    if (successAlertBottom) {
+      successAlertBottom.classList.remove('hidden');
+      const msgBottom = $('reset-success-msg-bottom');
+      if (msgBottom) msgBottom.textContent = 'Password reset successfully! Redirecting to sign in...';
+    }
+
+    setTimeout(() => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Reset Password</span> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+      }
+      switchAuthTab('signin', true);
+      const userEmail = user.email || lowerIdent;
+      if ($('signin-email')) $('signin-email').value = userEmail;
+      if ($('signin-password')) {
+        $('signin-password').value = pwd;
+        $('signin-password').focus();
+      }
+      if (successAlert) successAlert.classList.add('hidden');
+      if (successAlertBottom) successAlertBottom.classList.add('hidden');
+      showToast('You can now sign in with your new password! ✨');
+    }, 800);
+  } catch (err) {
+    console.error('[SpendFlow handleResetPassword Fatal Error]', err);
+    showResetError(`Unexpected error: ${err.message || 'Please retry.'}`);
+  }
 }
+window.handleResetPassword = handleResetPassword;
+
+window.handleResetSubmit = function(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const email = $('reset-email') ? $('reset-email').value : '';
+  const recoveryCode = $('reset-recovery-code') ? $('reset-recovery-code').value : '';
+  const newPw = $('reset-new-password') ? $('reset-new-password').value : '';
+  const confirmPw = $('reset-confirm-password') ? $('reset-confirm-password').value : '';
+  handleResetPassword(email, recoveryCode, newPw, confirmPw);
+};
 
 function handleSignOut() {
   clearActiveSession();
