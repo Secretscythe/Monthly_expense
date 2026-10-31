@@ -691,7 +691,10 @@ function showResetError(msg) {
   if (alert && text) {
     text.textContent = msg;
     alert.classList.remove('hidden');
+    alert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
+  showToast(msg);
+  console.warn('[SpendFlow Reset Password Error]', msg);
 }
 
 function handleSignIn(emailOrUsername, password, remember) {
