@@ -478,12 +478,17 @@ function openAvatarModal() {
     btn.classList.toggle('active', btn.dataset.avatar === pendingAvatar);
   });
 
-  if ($('avatar-modal')) $('avatar-modal').classList.remove('hidden');
+  const modal = $('avatar-modal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.scrollTop = 0;
+  }
   setModalScrollLock(true);
 }
 
 function closeAvatarModal() {
-  if ($('avatar-modal')) $('avatar-modal').classList.add('hidden');
+  const modal = $('avatar-modal');
+  if (modal) modal.classList.add('hidden');
   setModalScrollLock(false);
 }
 

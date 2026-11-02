@@ -69,9 +69,6 @@ body.modal-open,
 body.auth-locked,
 body.auth-modal-open {
   overflow: hidden !important;
-  height: 100vh !important;
-  max-height: 100vh !important;
-  position: relative;
   overscroll-behavior: none !important;
   touch-action: none;
 }
@@ -1805,9 +1802,9 @@ body.auth-locked .app-layout {
   -webkit-backdrop-filter: blur(12px);
   z-index: 9999;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 1.25rem;
+  padding: 3rem 1.25rem 2.5rem;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -1819,6 +1816,7 @@ body.auth-locked .app-layout {
 }
 
 .modal-dialog {
+  margin: 0 auto;
   width: 100%;
   max-width: 660px;
   max-height: 88vh;
