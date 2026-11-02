@@ -428,6 +428,42 @@ function updateUserProfileUI(user) {
 // ========================================================
 // PROFILE PICTURE / AVATAR MODAL CONTROLLERS
 // ========================================================
+// MODAL SCROLL LOCK & BACKGROUND CONTAINMENT
+// ========================================================
+
+function setModalScrollLock(locked) {
+  if (locked) {
+    document.documentElement.classList.add('modal-open');
+    document.body.classList.add('modal-open');
+  } else {
+    const activeModal = document.querySelector(
+      '.modal-backdrop:not(.hidden), .auth-overlay:not(.hidden), .auth-modal-overlay:not(.hidden), #app-lock-screen:not(.hidden)'
+    );
+    if (!activeModal) {
+      document.documentElement.classList.remove('modal-open');
+      document.body.classList.remove('modal-open');
+      document.body.classList.remove('auth-modal-open');
+    }
+  }
+}
+
+// Prevent wheel and touchpad gestures over modals from chaining to the background document
+document.addEventListener('wheel', e => {
+  const activeModal = document.querySelector('.modal-backdrop:not(.hidden), .auth-overlay:not(.hidden)');
+  if (!activeModal) return;
+
+  const scrollable = e.target.closest('.modal-dialog, .avatar-dialog, .auth-card, .avatar-modal-body, .cat-list, .admin-card, .table-container');
+  if (!scrollable) {
+    e.preventDefault();
+    return;
+  }
+
+  const atTop = scrollable.scrollTop <= 0 && e.deltaY < 0;
+  const atBottom = (scrollable.scrollHeight - scrollable.scrollTop <= scrollable.clientHeight + 1) && e.deltaY > 0;
+  if (atTop || atBottom) {
+    e.preventDefault();
+  }
+}, { passive: false });
 
 let pendingAvatar = null;
 
@@ -443,14 +479,12 @@ function openAvatarModal() {
   });
 
   if ($('avatar-modal')) $('avatar-modal').classList.remove('hidden');
-  document.body.classList.add('auth-modal-open');
+  setModalScrollLock(true);
 }
 
 function closeAvatarModal() {
   if ($('avatar-modal')) $('avatar-modal').classList.add('hidden');
-  if (!$('auth-modal') || $('auth-modal').classList.contains('hidden')) {
-    document.body.classList.remove('auth-modal-open');
-  }
+  setModalScrollLock(false);
 }
 
 function handleAvatarFileUpload(file) {
@@ -529,12 +563,12 @@ function openMonthPicker() {
   monthPickerYear = state.currentDate.getFullYear();
   renderMonthPicker();
   if ($('month-picker-modal')) $('month-picker-modal').classList.remove('hidden');
-  document.body.classList.add('modal-open');
+  setModalScrollLock(true);
 }
 
 function closeMonthPicker() {
   if ($('month-picker-modal')) $('month-picker-modal').classList.add('hidden');
-  document.body.classList.remove('modal-open');
+  setModalScrollLock(false);
 }
 
 function renderMonthPicker() {
@@ -2194,12 +2228,12 @@ function openCategoryModal(tab) {
   resetCategoryForm();
   renderCategoryModal();
   $('category-modal').classList.remove('hidden');
-  document.body.classList.add('modal-open');
+  setModalScrollLock(true);
 }
 
 function closeCategoryModal() {
   $('category-modal').classList.add('hidden');
-  document.body.classList.remove('modal-open');
+  setModalScrollLock(false);
   resetCategoryForm();
 }
 
@@ -3361,13 +3395,13 @@ function parseAndPreviewCSV(text, filename) {
 
   if ($('csv-import-modal')) {
     $('csv-import-modal').classList.remove('hidden');
-    document.body.classList.add('modal-open');
+    setModalScrollLock(true);
   }
 }
 
 function closeCSVModal() {
   if ($('csv-import-modal')) $('csv-import-modal').classList.add('hidden');
-  document.body.classList.remove('modal-open');
+  setModalScrollLock(false);
   pendingCSVEntries = [];
 }
 
@@ -3404,13 +3438,13 @@ function openAdminPanel() {
   renderAdminUsersTable();
   if ($('admin-modal')) {
     $('admin-modal').classList.remove('hidden');
-    document.body.classList.add('modal-open');
+    setModalScrollLock(true);
   }
 }
 
 function closeAdminModal() {
   if ($('admin-modal')) $('admin-modal').classList.add('hidden');
-  document.body.classList.remove('modal-open');
+  setModalScrollLock(false);
 }
 
 function renderAdminUsersTable() {
@@ -4297,11 +4331,13 @@ function openAppLockSettingsModal() {
   if (!modal) return;
   renderAppLockSettingsView();
   modal.classList.remove('hidden');
+  setModalScrollLock(true);
 }
 
 function closeAppLockSettingsModal() {
   const modal = $('app-lock-settings-modal');
   if (modal) modal.classList.add('hidden');
+  setModalScrollLock(false);
   appLockState.promptAction = null;
   const promptBox = $('app-lock-auth-prompt-box');
   if (promptBox) promptBox.classList.add('hidden');
@@ -4575,6 +4611,7 @@ function openAppLockRecoverModal() {
   if ($('app-lock-reset-confirm-pin')) $('app-lock-reset-confirm-pin').value = '';
   if ($('app-lock-recover-error')) $('app-lock-recover-error').classList.add('hidden');
   modal.classList.remove('hidden');
+  setModalScrollLock(true);
   setTimeout(() => {
     if ($('app-lock-entered-code')) $('app-lock-entered-code').focus();
   }, 80);
@@ -4583,6 +4620,7 @@ function openAppLockRecoverModal() {
 function closeAppLockRecoverModal() {
   const modal = $('app-lock-recover-modal');
   if (modal) modal.classList.add('hidden');
+  setModalScrollLock(false);
 }
 
 async function handleAppLockRecoverSubmit(e) {

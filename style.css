@@ -64,12 +64,22 @@ body {
 }
 
 /* Scroll lock when modal or authentication is active */
+html.modal-open,
+body.modal-open,
 body.auth-locked,
-body.modal-open {
+body.auth-modal-open {
   overflow: hidden !important;
   height: 100vh !important;
+  max-height: 100vh !important;
   position: relative;
+  overscroll-behavior: none !important;
   touch-action: none;
+}
+
+html.modal-open .app-layout,
+body.modal-open .app-layout {
+  overflow: hidden !important;
+  pointer-events: none !important;
 }
 
 body.auth-locked .app-layout {
@@ -1798,6 +1808,9 @@ body.auth-locked .app-layout {
   align-items: center;
   justify-content: center;
   padding: 1.25rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   transition: opacity var(--transition-normal);
 }
 
@@ -1810,6 +1823,8 @@ body.auth-locked .app-layout {
   max-width: 660px;
   max-height: 88vh;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   background: rgba(15, 23, 42, 0.96);
   border: 1px solid var(--border-hover);
   box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 45px rgba(99, 102, 241, 0.15);
@@ -2522,6 +2537,8 @@ body.auth-locked .app-layout {
   justify-content: center;
   padding: 3rem 1.25rem 2rem;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .auth-overlay.hidden {
@@ -3852,6 +3869,10 @@ body.auth-locked .app-layout {
 /* Avatar Modal Styles */
 .avatar-dialog {
   max-width: 440px;
+  max-height: 88vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   text-align: center;
 }
 
