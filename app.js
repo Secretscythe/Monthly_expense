@@ -79,7 +79,7 @@ const state = {
   currentUser: null,         // { id, name, email }
   currentDate: new Date(),   // month being viewed
   selectedDay: null,         // 'YYYY-MM-DD' or null (= whole month)
-  calendarMode: 'days',      // 'days' | 'months' (Toggle between day grid & 12-month grid)
+  calendarMode: 'month',     // 'day' (focused single day) | 'month' (full month grid) | 'months' (12-month overview)
   viewScope: 'month',        // 'month' | 'year' (View all months)
   entries: [],
   baseBalance: 2500,
@@ -643,6 +643,7 @@ function applyUserLogin(user, showGreeting = true) {
   setLogMode('deduct');
   populateCategoryFilter();
   if ($('expense-date-input')) $('expense-date-input').value = defaultLogDate();
+  if ($('expense-time-input')) $('expense-time-input').value = formatCurrentTime();
   renderAll();
   updateAppLockBadgeUI();
 
@@ -1535,6 +1536,43 @@ function formatLongDate(key) {
   return parseDateKey(key).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function formatCurrentTime() {
+  const now = new Date();
+  return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+function formatTimeFromTimestamp(ts) {
+  if (!ts) return formatCurrentTime();
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return formatCurrentTime();
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function formatDisplayTime(timeStr, timestamp) {
+  if (timeStr && typeof timeStr === 'string' && timeStr.includes(':')) {
+    const parts = timeStr.split(':');
+    let h = parseInt(parts[0], 10);
+    const m = String(parts[1] || '00').padStart(2, '0').slice(0, 2);
+    if (!isNaN(h)) {
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12 || 12;
+      return `${h}:${m} ${ampm}`;
+    }
+    return timeStr;
+  }
+  if (timestamp) {
+    const d = new Date(timestamp);
+    if (!isNaN(d.getTime())) {
+      let h = d.getHours();
+      const m = pad(d.getMinutes());
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12 || 12;
+      return `${h}:${m} ${ampm}`;
+    }
+  }
+  return '';
+}
+
 function escapeHTML(str) {
   if (!str) return '';
   return String(str).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
@@ -1573,6 +1611,7 @@ function renderAll() {
   renderTrend();
   renderMOMAndYTD();
   renderRecords();
+  updateFormDayTimings();
 }
 
 function renderHeader() {
@@ -1581,9 +1620,14 @@ function renderHeader() {
   $('current-month-label').textContent = monthName;
 
   const isAllYear = state.viewScope === 'year';
+  const isDayView = state.calendarMode === 'day';
   const isMonthsView = state.calendarMode === 'months';
+  const activeDay = state.selectedDay || (isDayView ? defaultLogDate() : null);
+
   let viewLabel = monthName;
-  if (state.selectedDay) {
+  if (isDayView && activeDay) {
+    viewLabel = formatLongDate(activeDay);
+  } else if (state.selectedDay) {
     viewLabel = formatLongDate(state.selectedDay);
   } else if (isAllYear) {
     viewLabel = `All Months (${curYear})`;
@@ -1592,10 +1636,15 @@ function renderHeader() {
   $('records-subtitle').textContent = `Showing records for ${viewLabel}`;
   $('category-chart-subtitle').textContent = `Expense distribution for ${viewLabel}`;
 
-  // Update Days vs Months Segmented Buttons
+  // Update Day vs Month vs 12-Months Segmented Buttons
+  if ($('cal-toggle-day-btn')) {
+    $('cal-toggle-day-btn').classList.toggle('active', isDayView);
+    $('cal-toggle-day-btn').setAttribute('aria-selected', isDayView);
+  }
   if ($('cal-toggle-days-btn')) {
-    $('cal-toggle-days-btn').classList.toggle('active', !isMonthsView);
-    $('cal-toggle-days-btn').setAttribute('aria-selected', !isMonthsView);
+    const isMonthView = !isDayView && !isMonthsView;
+    $('cal-toggle-days-btn').classList.toggle('active', isMonthView);
+    $('cal-toggle-days-btn').setAttribute('aria-selected', isMonthView);
   }
   if ($('cal-toggle-months-btn')) {
     $('cal-toggle-months-btn').classList.toggle('active', isMonthsView);
@@ -1603,28 +1652,37 @@ function renderHeader() {
   }
 
   if ($('calendar-card-title')) {
-    $('calendar-card-title').textContent = isMonthsView ? `12-Month Calendar (${curYear})` : 'Monthly Calendar';
+    if (isDayView) {
+      $('calendar-card-title').textContent = `Day View — ${formatLongDate(activeDay || defaultLogDate())}`;
+    } else if (isMonthsView) {
+      $('calendar-card-title').textContent = `12-Month Calendar (${curYear})`;
+    } else {
+      $('calendar-card-title').textContent = `Monthly Calendar (${monthName})`;
+    }
   }
   if ($('calendar-section-icon')) {
-    $('calendar-section-icon').textContent = isMonthsView ? '🗓️' : '📅';
+    $('calendar-section-icon').textContent = isDayView ? '☀️' : (isMonthsView ? '🗓️' : '📅');
   }
 
   if ($('calendar-selected-label')) {
-    if (isMonthsView) {
+    if (isDayView) {
+      $('calendar-selected-label').textContent = `Focused on ${formatLongDate(activeDay || defaultLogDate())} • Showing day timings & transactions • Click "Month" to return to full month`;
+    } else if (isMonthsView) {
       $('calendar-selected-label').textContent = `Showing all 12 months for ${curYear} • Click any month to inspect its days & records`;
     } else if (state.selectedDay) {
       $('calendar-selected-label').textContent = `Selected Day: ${formatLongDate(state.selectedDay)} • Click "Full Month" to unselect`;
     } else if (isAllYear) {
       $('calendar-selected-label').textContent = `Showing Year ${curYear} • Records list displays all 12 months below`;
     } else {
-      $('calendar-selected-label').textContent = `Showing all days for ${monthName} • Click any day to inspect or log for that day`;
+      $('calendar-selected-label').textContent = `Showing all days for ${monthName} • Click any day to focus on that day`;
     }
   }
 
   // Quick day nav bar updates
   const dayNavBar = $('calendar-day-nav-bar');
   if (dayNavBar) {
-    const showDayNav = !isMonthsView && Boolean(state.selectedDay);
+    // Only show old day nav bar in month view when a day is selected
+    const showDayNav = !isDayView && !isMonthsView && Boolean(state.selectedDay);
     dayNavBar.classList.toggle('hidden', !showDayNav);
     if (showDayNav && $('calendar-day-nav-title')) {
       $('calendar-day-nav-title').textContent = formatLongDate(state.selectedDay);
@@ -1635,7 +1693,9 @@ function renderHeader() {
   if ($('calendar-all-month-btn')) {
     const btnSpan = $('calendar-all-month-btn').querySelector('span');
     if (btnSpan) {
-      if (isMonthsView) {
+      if (isDayView) {
+        btnSpan.textContent = `Full Month (${monthName.split(' ')[0]}) ❯`;
+      } else if (isMonthsView) {
         btnSpan.textContent = `View Days (${monthName.split(' ')[0]}) ❯`;
       } else if (state.selectedDay) {
         btnSpan.textContent = `Full Month (${monthName.split(' ')[0]})`;
@@ -1659,25 +1719,221 @@ function renderHeader() {
   }
 }
 
-// ---------- Calendar Rendering: Individual Days or 12-Month Overview ----------
+// ---------- Calendar Rendering: Focused Day, Month Grid, or 12-Month Overview ----------
 function renderCalendar() {
   const grid = $('calendar-grid');
   if (!grid) return;
   grid.innerHTML = '';
   const year = state.currentDate.getFullYear();
   const month = state.currentDate.getMonth();
-  const isMonthsView = state.calendarMode === 'months';
   const weekdaysEl = $('calendar-weekdays');
 
-  if (isMonthsView) {
+  if (state.calendarMode === 'day') {
     if (weekdaysEl) weekdaysEl.classList.add('hidden');
-    grid.classList.add('months-view');
+    grid.className = 'calendar-grid day-view';
+    const dayKey = state.selectedDay || defaultLogDate();
+    state.selectedDay = dayKey;
+    renderSingleDayView(grid, dayKey);
+  } else if (state.calendarMode === 'months') {
+    if (weekdaysEl) weekdaysEl.classList.add('hidden');
+    grid.className = 'calendar-grid months-view';
     render12MonthsGrid(grid, year);
   } else {
     if (weekdaysEl) weekdaysEl.classList.remove('hidden');
-    grid.classList.remove('months-view');
+    grid.className = 'calendar-grid';
     renderDaysGrid(grid, year, month);
   }
+}
+
+// Dedicated Single-Day Focused View (Hides all other days in the month)
+function renderSingleDayView(grid, dayKey) {
+  const targetDay = dayKey || state.selectedDay || defaultLogDate();
+  state.selectedDay = targetDay;
+  const parsed = parseDateKey(targetDay);
+  const weekdayName = parsed.toLocaleDateString('en-US', { weekday: 'long' });
+  const monthName = parsed.toLocaleDateString('en-US', { month: 'long' });
+  const dayNum = parsed.getDate();
+  const yearNum = parsed.getFullYear();
+  const todayKey = toDateKey(new Date());
+  const isToday = targetDay === todayKey;
+
+  // Filter entries for this specific focused day
+  const dayEntries = state.entries.filter(e => e.date === targetDay);
+  dayEntries.sort((a, b) => {
+    const timeA = a.time || (a.createdAt ? formatTimeFromTimestamp(a.createdAt) : '');
+    const timeB = b.time || (b.createdAt ? formatTimeFromTimestamp(b.createdAt) : '');
+    return timeA.localeCompare(timeB) || (a.createdAt || 0) - (b.createdAt || 0);
+  });
+
+  const dayIncome = sumAmounts(dayEntries.filter(e => e.type === 'add'));
+  const dayExpenses = sumAmounts(dayEntries.filter(e => e.type === 'deduct'));
+  const dayNet = dayIncome - dayExpenses;
+
+  const container = document.createElement('div');
+  container.className = 'focused-day-view';
+
+  // Build the day timeline items HTML
+  let timelineHTML = '';
+  if (dayEntries.length === 0) {
+    timelineHTML = `
+      <div class="focused-day-empty">
+        <div class="empty-icon">☀️</div>
+        <div class="empty-title">No transactions recorded for this day</div>
+        <div class="empty-desc">Use the Quick Amount Logger to log an expense or income with exact timing for this day.</div>
+        <button type="button" class="pill-btn primary-pill btn-sm" id="focused-day-log-now-btn">
+          ⚡ Log Expense for ${monthName.slice(0, 3)} ${dayNum}
+        </button>
+      </div>
+    `;
+  } else {
+    timelineHTML = '<div class="day-timeline-list">';
+    dayEntries.forEach(item => {
+      const isAdd = item.type === 'add';
+      const cfg = getCategoryConfig(item.category, item.type);
+      const displayTime = formatDisplayTime(item.time, item.createdAt) || 'No time set';
+      timelineHTML += `
+        <div class="day-timeline-item" data-id="${item.id}">
+          <div class="day-time-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span>${displayTime}</span>
+          </div>
+          <div class="day-timeline-card">
+            <div class="timeline-card-left">
+              <span class="timeline-cat-icon" style="background:${cfg.color}26;color:${cfg.color};">${cfg.icon}</span>
+              <div>
+                <div class="timeline-cat-name">${escapeHTML(item.category)}${item.note ? ` <span class="timeline-note">— ${escapeHTML(item.note)}</span>` : ''}</div>
+                <div class="timeline-meta-type">${isAdd ? 'Income addition' : 'Expense deduction'}</div>
+              </div>
+            </div>
+            <div class="timeline-card-right">
+              <span class="timeline-amount ${isAdd ? 'add' : 'deduct'}">${isAdd ? '+' : '-'}${formatCurrency(item.amount)}</span>
+              <div class="timeline-actions">
+                <button type="button" class="action-icon-btn edit-entry-btn" data-id="${item.id}" title="Edit" aria-label="Edit">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                </button>
+                <button type="button" class="action-icon-btn delete-entry-btn" data-id="${item.id}" title="Delete" aria-label="Delete">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    timelineHTML += '</div>';
+  }
+
+  container.innerHTML = `
+    <!-- Top Hero Banner for the Focused Single Day -->
+    <div class="focused-day-hero">
+      <div class="focused-day-info">
+        <div class="focused-day-subhead">
+          <span class="focused-weekday-tag">${weekdayName}</span>
+          ${isToday ? '<span class="focused-today-badge">Today</span>' : ''}
+        </div>
+        <h3 class="focused-date-title">${monthName} ${dayNum}, ${yearNum}</h3>
+      </div>
+      <div class="focused-nav-group">
+        <button type="button" class="calendar-day-nav-btn" id="foc-prev-btn" title="Previous day">
+          <span>❮ Prev Day</span>
+        </button>
+        <button type="button" class="calendar-day-nav-btn" id="foc-today-btn" title="Jump to today">
+          <span>Today</span>
+        </button>
+        <button type="button" class="calendar-day-nav-btn" id="foc-next-btn" title="Next day">
+          <span>Next Day ❯</span>
+        </button>
+        <button type="button" class="calendar-day-nav-btn" id="foc-month-btn" style="background: rgba(99, 102, 241, 0.2); border-color: rgba(99, 102, 241, 0.4);" title="View full month calendar">
+          <span>📅 Full Month</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Day KPI Summary Chips -->
+    <div class="focused-day-kpis">
+      <div class="day-kpi-chip safe">
+        <span class="chip-label">Inflow</span>
+        <span class="chip-val">+${formatCurrency(dayIncome)}</span>
+      </div>
+      <div class="day-kpi-chip danger">
+        <span class="chip-label">Expenses</span>
+        <span class="chip-val">-${formatCurrency(dayExpenses)}</span>
+      </div>
+      <div class="day-kpi-chip ${dayNet >= 0 ? 'safe' : 'danger'}">
+        <span class="chip-label">Day Net</span>
+        <span class="chip-val">${formatSigned(dayNet)}</span>
+      </div>
+      <div class="day-kpi-chip neutral">
+        <span class="chip-label">Transactions</span>
+        <span class="chip-val">${dayEntries.length} ${dayEntries.length === 1 ? 'record' : 'records'}</span>
+      </div>
+    </div>
+
+    <!-- Timeline & Timings Container -->
+    <div class="focused-day-timeline-card">
+      <div class="timeline-card-header">
+        <div class="timeline-title-row">
+          <span class="timeline-icon">🕒</span>
+          <div>
+            <h4 class="timeline-title">Day Timings & Activity Schedule</h4>
+            <p class="timeline-sub">Chronological list of all transactions logged on this day with timings</p>
+          </div>
+        </div>
+        <button type="button" class="pill-btn primary-pill btn-xs" id="foc-quick-add-btn">
+          + Add Entry
+        </button>
+      </div>
+      ${timelineHTML}
+    </div>
+  `;
+
+  grid.appendChild(container);
+
+  // Wire up event listeners
+  const prevBtn = container.querySelector('#foc-prev-btn');
+  if (prevBtn) prevBtn.addEventListener('click', () => changeSelectedDay(-1));
+
+  const todayBtn = container.querySelector('#foc-today-btn');
+  if (todayBtn) todayBtn.addEventListener('click', jumpToToday);
+
+  const nextBtn = container.querySelector('#foc-next-btn');
+  if (nextBtn) nextBtn.addEventListener('click', () => changeSelectedDay(1));
+
+  const monthBtn = container.querySelector('#foc-month-btn');
+  if (monthBtn) monthBtn.addEventListener('click', () => {
+    state.calendarMode = 'month';
+    state.selectedDay = null;
+    if (!$('editing-expense-id').value) $('expense-date-input').value = defaultLogDate();
+    renderAll();
+    showToast('Returned to full month view 📅');
+  });
+
+  const quickAddBtn = container.querySelector('#foc-quick-add-btn');
+  if (quickAddBtn) quickAddBtn.addEventListener('click', () => {
+    $('expense-date-input').value = targetDay;
+    if ($('expense-time-input')) $('expense-time-input').value = formatCurrentTime();
+    updateFormDayTimings();
+    $('add-expense-section').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    $('expense-amount-input').focus();
+  });
+
+  const logNowBtn = container.querySelector('#focused-day-log-now-btn');
+  if (logNowBtn) logNowBtn.addEventListener('click', () => {
+    $('expense-date-input').value = targetDay;
+    if ($('expense-time-input')) $('expense-time-input').value = formatCurrentTime();
+    updateFormDayTimings();
+    $('add-expense-section').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    $('expense-amount-input').focus();
+  });
+
+  // Edit and Delete buttons in timeline
+  container.querySelectorAll('.edit-entry-btn').forEach(btn => {
+    btn.addEventListener('click', () => startEdit(btn.dataset.id));
+  });
+
+  container.querySelectorAll('.delete-entry-btn').forEach(btn => {
+    btn.addEventListener('click', () => deleteEntry(btn.dataset.id));
+  });
 }
 
 function renderDaysGrid(grid, year, month) {
@@ -1721,6 +1977,57 @@ function renderDaysGrid(grid, year, month) {
       : formatLongDate(key);
     cell.addEventListener('click', () => selectDay(key));
     grid.appendChild(cell);
+  }
+}
+
+// Live Day Timings & Schedule Preview inside Quick Logger
+function updateFormDayTimings() {
+  const panel = $('form-day-timings-panel');
+  const chipsContainer = $('form-day-timings-chips');
+  const dateLabel = $('form-day-timings-date');
+  const summaryLabel = $('form-day-timings-summary');
+  if (!panel || !chipsContainer) return;
+
+  const dateVal = ($('expense-date-input') && $('expense-date-input').value) || defaultLogDate();
+  const parsed = parseDateKey(dateVal);
+  const formattedDate = parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' });
+
+  if (dateLabel) dateLabel.textContent = formattedDate;
+
+  const entriesOnDay = state.entries.filter(e => e.date === dateVal);
+  entriesOnDay.sort((a, b) => {
+    const timeA = a.time || (a.createdAt ? formatTimeFromTimestamp(a.createdAt) : '');
+    const timeB = b.time || (b.createdAt ? formatTimeFromTimestamp(b.createdAt) : '');
+    return timeA.localeCompare(timeB) || (a.createdAt || 0) - (b.createdAt || 0);
+  });
+
+  if (summaryLabel) {
+    summaryLabel.textContent = `${entriesOnDay.length} ${entriesOnDay.length === 1 ? 'entry' : 'entries'}`;
+  }
+
+  chipsContainer.innerHTML = '';
+  if (entriesOnDay.length === 0) {
+    chipsContainer.innerHTML = `
+      <div class="day-timing-empty-hint">
+        <span>No expenses or income logged for this date yet. Your new entry will be the first!</span>
+      </div>
+    `;
+  } else {
+    entriesOnDay.forEach(e => {
+      const isAdd = e.type === 'add';
+      const cfg = getCategoryConfig(e.category, e.type);
+      const displayTime = formatDisplayTime(e.time, e.createdAt) || 'No time';
+      const chip = document.createElement('div');
+      chip.className = `timing-mini-chip ${isAdd ? 'add' : 'deduct'}`;
+      chip.title = `${e.category} (${isAdd ? '+' : '-'}${formatCurrency(e.amount)}) at ${displayTime}`;
+      chip.innerHTML = `
+        <span class="chip-time">🕒 ${displayTime}</span>
+        <span class="chip-dot">•</span>
+        <span class="chip-cat">${cfg.icon} ${escapeHTML(e.category)}</span>
+        <span class="chip-amt">${isAdd ? '+' : '-'}${formatCurrency(e.amount)}</span>
+      `;
+      chipsContainer.appendChild(chip);
+    });
   }
 }
 
@@ -2286,6 +2593,7 @@ function renderRecords() {
 function buildRecordCard(item) {
   const isAdd = item.type === 'add';
   const cfg = getCategoryConfig(item.category, item.type);
+  const displayTime = formatDisplayTime(item.time, item.createdAt);
   const card = document.createElement('div');
   card.className = 'expense-card';
   card.innerHTML = `
@@ -2293,7 +2601,10 @@ function buildRecordCard(item) {
       <div class="expense-icon-badge" style="background:${cfg.color}26;color:${cfg.color};">${cfg.icon}</div>
       <div>
         <div class="expense-title">${escapeHTML(item.category)}${item.note ? ` <span style="color:var(--text-dim);font-weight:500;">— ${escapeHTML(item.note)}</span>` : ''}</div>
-        <div class="expense-meta"><span>${isAdd ? 'Income • Added to balance' : 'Expense • Deducted from balance'}</span></div>
+        <div class="expense-meta">
+          <span>${isAdd ? 'Income • Added to balance' : 'Expense • Deducted from balance'}</span>
+          ${displayTime ? `<span class="record-time-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> ${displayTime}</span>` : ''}
+        </div>
       </div>
     </div>
     <div class="expense-right">
@@ -2830,6 +3141,10 @@ function handleSubmit() {
     return;
   }
 
+  // 1b. Capture Time
+  const timeInputVal = $('expense-time-input') ? $('expense-time-input').value.trim() : '';
+  const time = timeInputVal || formatCurrentTime();
+
   // 2. Validate Amount
   const amountRes = validateAmountInput($('expense-amount-input').value, state.logMode);
   if (!amountRes.valid) {
@@ -2866,33 +3181,35 @@ function handleSubmit() {
 
   if (editingId) {
     const idx = state.entries.findIndex(e => e.id === editingId);
-    if (idx !== -1) state.entries[idx] = { ...state.entries[idx], type, amount, category, note, date };
+    if (idx !== -1) {
+      state.entries[idx] = { ...state.entries[idx], type, amount, category, note, date, time };
+    }
     saveEntries();
     cancelEdit();
-    showToast(`Updated ${category} (${type === 'add' ? '+' : '-'}${formatCurrency(amount)})`);
+    showToast(`Updated ${category} (${type === 'add' ? '+' : '-'}${formatCurrency(amount)}) at ${formatDisplayTime(time)}`);
   } else {
     state.entries.unshift({
       id: 'entry-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
-      type, amount, category, note, date, createdAt: Date.now()
+      type, amount, category, note, date, time, createdAt: Date.now()
     });
     saveEntries();
     $('expense-amount-input').value = '';
     $('expense-note-input').value = '';
     $('custom-category-input').value = '';
+    if ($('expense-time-input')) $('expense-time-input').value = formatCurrentTime();
     updateCharCounter($('expense-note-input'), $('note-char-counter'), 100);
     updateCharCounter($('custom-category-input'), $('custom-cat-counter'), 32);
 
     showToast(type === 'add'
-      ? `Added ${formatCurrency(amount)} on ${parseDateKey(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-      : `Deducted ${formatCurrency(amount)} (${category})`);
+      ? `Added ${formatCurrency(amount)} at ${formatDisplayTime(time)} on ${parseDateKey(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+      : `Deducted ${formatCurrency(amount)} (${category}) at ${formatDisplayTime(time)}`);
     $('expense-amount-input').focus();
   }
 
-  // Jump calendar to the month of the logged entry
+  // Jump calendar to the month of the logged entry if different
   const d = parseDateKey(date);
   if (getMonthKey(d) !== getMonthKey(state.currentDate)) {
     state.currentDate = new Date(d.getFullYear(), d.getMonth(), 1);
-    state.selectedDay = null;
   }
   populateCategoryFilter();
   renderAll();
@@ -2905,6 +3222,9 @@ function startEdit(id) {
   setLogMode(item.type, item.category);
   $('expense-amount-input').value = item.amount;
   $('expense-date-input').value = item.date;
+  if ($('expense-time-input')) {
+    $('expense-time-input').value = item.time || (item.createdAt ? formatTimeFromTimestamp(item.createdAt) : formatCurrentTime());
+  }
   $('expense-note-input').value = item.note || '';
   $('add-expense-section').classList.add('edit-mode');
   $('form-section-icon').textContent = '✏️';
@@ -2913,6 +3233,7 @@ function startEdit(id) {
   $('submit-btn-text').textContent = 'Save Changes';
   $('cancel-edit-btn').classList.remove('hidden');
   hideFormError();
+  updateFormDayTimings();
   $('add-expense-section').scrollIntoView({ behavior: 'smooth', block: 'center' });
   $('expense-amount-input').focus();
 }
@@ -2923,6 +3244,7 @@ function cancelEdit() {
   $('expense-note-input').value = '';
   $('custom-category-input').value = '';
   $('expense-date-input').value = defaultLogDate();
+  if ($('expense-time-input')) $('expense-time-input').value = formatCurrentTime();
   $('add-expense-section').classList.remove('edit-mode');
   $('form-section-icon').textContent = '⚡';
   $('form-section-title').textContent = 'Quick Amount Logger';
@@ -2930,6 +3252,7 @@ function cancelEdit() {
   $('cancel-edit-btn').classList.add('hidden');
   setLogMode('deduct');
   hideFormError();
+  updateFormDayTimings();
 }
 
 function deleteEntry(id) {
@@ -2947,28 +3270,33 @@ function deleteEntry(id) {
 // ========================================================
 
 function selectDay(key) {
-  state.calendarMode = 'days';
-  state.selectedDay = state.selectedDay === key ? null : key;
-  if (!$('editing-expense-id').value) $('expense-date-input').value = defaultLogDate();
-  renderAll();
-  if (state.selectedDay) {
-    showToast(`Filtering view to ${formatLongDate(key)} ☀️`);
-  } else {
+  if (state.calendarMode === 'day' && state.selectedDay === key) {
+    // If clicking the already selected day in Day mode, toggle back to month
+    state.calendarMode = 'month';
+    state.selectedDay = null;
+    if (!$('editing-expense-id').value) $('expense-date-input').value = defaultLogDate();
+    renderAll();
     showToast('Showing full month view 📅');
+  } else {
+    // Focus exclusively on this day
+    state.calendarMode = 'day';
+    state.selectedDay = key;
+    if (!$('editing-expense-id').value) $('expense-date-input').value = key;
+    renderAll();
+    showToast(`Focused on ${formatLongDate(key)} ☀️`);
   }
 }
 
 function changeSelectedDay(delta) {
-  state.calendarMode = 'days';
+  state.calendarMode = 'day';
   if (!state.selectedDay) {
-    const now = new Date();
-    state.selectedDay = toDateKey(new Date(state.currentDate.getFullYear(), state.currentDate.getMonth(), now.getDate()));
+    state.selectedDay = defaultLogDate();
   }
   const cur = parseDateKey(state.selectedDay);
   cur.setDate(cur.getDate() + delta);
   state.currentDate = new Date(cur.getFullYear(), cur.getMonth(), 1);
   state.selectedDay = toDateKey(cur);
-  if (!$('editing-expense-id').value) $('expense-date-input').value = defaultLogDate();
+  if (!$('editing-expense-id').value) $('expense-date-input').value = state.selectedDay;
   renderAll();
   showToast(`Viewing ${formatLongDate(state.selectedDay)} ☀️`);
 }
@@ -2976,8 +3304,10 @@ function changeSelectedDay(delta) {
 function changeMonth(delta) {
   state.currentDate = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth() + delta, 1);
   state.selectedDay = null;
+  state.calendarMode = 'month';
   if ($('editing-expense-id').value) cancelEdit();
   $('expense-date-input').value = defaultLogDate();
+  if ($('expense-time-input')) $('expense-time-input').value = formatCurrentTime();
   exitBalanceEdit();
   renderAll();
 }
@@ -2986,10 +3316,13 @@ function jumpToToday() {
   const now = new Date();
   state.currentDate = new Date(now.getFullYear(), now.getMonth(), 1);
   state.selectedDay = toDateKey(now);
+  state.calendarMode = 'day';
   if ($('editing-expense-id').value) cancelEdit();
-  $('expense-date-input').value = defaultLogDate();
+  $('expense-date-input').value = state.selectedDay;
+  if ($('expense-time-input')) $('expense-time-input').value = formatCurrentTime();
   exitBalanceEdit();
   renderAll();
+  showToast(`Jumped to Today (${formatLongDate(state.selectedDay)}) ☀️`);
 }
 
 function enterBalanceEdit() {
@@ -3049,7 +3382,7 @@ function setTypeFilter(type) {
 }
 
 function exportCSV() {
-  const list = getMonthEntries().slice().sort((a, b) => a.date.localeCompare(b.date));
+  const list = getMonthEntries().slice().sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
   if (list.length === 0) {
     showToast('No records to export for this month.');
     return;
@@ -3057,19 +3390,20 @@ function exportCSV() {
   const income = sumAmounts(list.filter(e => e.type === 'add'));
   const expenses = sumAmounts(list.filter(e => e.type === 'deduct'));
   const q = s => `"${String(s).replace(/"/g, '""')}"`;
-  const rows = [['Date', 'Day', 'Type', 'Category', 'Note', `Amount (${getCurrencySymbol()})`].join(',')];
+  const rows = [['Date', 'Time', 'Day', 'Type', 'Category', 'Note', `Amount (${getCurrencySymbol()})`].join(',')];
   list.forEach(e => rows.push([
     q(e.date),
+    q(formatDisplayTime(e.time, e.createdAt)),
     q(parseDateKey(e.date).toLocaleDateString('en-US', { weekday: 'long' })),
     q(e.type === 'add' ? 'Income' : 'Expense'),
     q(e.category), q(e.note || ''),
     (e.type === 'add' ? '' : '-') + e.amount.toFixed(2)
   ].join(',')));
   rows.push('');
-  rows.push(`"Total Income",,,,,${income.toFixed(2)}`);
-  rows.push(`"Total Expenses",,,,,-${expenses.toFixed(2)}`);
-  rows.push(`"Net Savings",,,,,${(income - expenses).toFixed(2)}`);
-  rows.push(`"Savings Rate",,,,,${income > 0 ? (((income - expenses) / income) * 100).toFixed(1) + '%' : 'N/A'}`);
+  rows.push(`"Total Income",,,,,,${income.toFixed(2)}`);
+  rows.push(`"Total Expenses",,,,,,-${expenses.toFixed(2)}`);
+  rows.push(`"Net Savings",,,,,,${(income - expenses).toFixed(2)}`);
+  rows.push(`"Savings Rate",,,,,,${income > 0 ? (((income - expenses) / income) * 100).toFixed(1) + '%' : 'N/A'}`);
 
   const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
@@ -3141,11 +3475,16 @@ function loadSampleData() {
     { type: 'add', amount: 3450.00, category: 'Salary', note: 'Bi-weekly direct deposit', date: makeDate(-2, 15) },
     { type: 'deduct', amount: 140.00, category: 'Transportation', note: 'Commute & travel', date: makeDate(-2, 20) },
     { type: 'deduct', amount: 210.00, category: 'Shopping & Retail', note: 'Summer apparel', date: makeDate(-2, 25) }
-  ].map((e, idx) => ({
-    id: `sample-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
-    ...e,
-    createdAt: Date.now() - (idx * 3600000)
-  }));
+  ].map((e, idx) => {
+    const hours = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20][idx % 12];
+    const mins = [0, 15, 30, 45][idx % 4];
+    return {
+      id: `sample-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+      time: `${pad(hours)}:${pad(mins)}`,
+      ...e,
+      createdAt: Date.now() - (idx * 3600000)
+    };
+  });
 
   state.entries = sampleEntries;
   state.baseBalance = 3500;
@@ -3214,12 +3553,24 @@ function initEventListeners() {
     });
   }
 
-  // Calendar View Toggles: Days vs Months
+  // Calendar View Toggles: Day vs Month vs 12-Months
+  if ($('cal-toggle-day-btn')) {
+    $('cal-toggle-day-btn').addEventListener('click', () => {
+      state.calendarMode = 'day';
+      if (!state.selectedDay) state.selectedDay = defaultLogDate();
+      if (!$('editing-expense-id').value) $('expense-date-input').value = state.selectedDay;
+      renderAll();
+      showToast(`Focused on ${formatLongDate(state.selectedDay)} ☀️`);
+    });
+  }
+
   if ($('cal-toggle-days-btn')) {
     $('cal-toggle-days-btn').addEventListener('click', () => {
-      state.calendarMode = 'days';
+      state.calendarMode = 'month';
+      state.selectedDay = null;
+      if (!$('editing-expense-id').value) $('expense-date-input').value = defaultLogDate();
       renderAll();
-      showToast('Switched calendar to Days view ☀️');
+      showToast('Switched calendar to Month view 📅');
     });
   }
 
@@ -3228,7 +3579,7 @@ function initEventListeners() {
       state.calendarMode = 'months';
       state.selectedDay = null;
       renderAll();
-      showToast('Switched calendar to 12-Month view 📅');
+      showToast('Switched calendar to 12-Month view 🗓️');
     });
   }
 
@@ -3239,16 +3590,20 @@ function initEventListeners() {
   if ($('cal-reset-day-btn')) {
     $('cal-reset-day-btn').addEventListener('click', () => {
       state.selectedDay = null;
+      state.calendarMode = 'month';
+      if (!$('editing-expense-id').value) $('expense-date-input').value = defaultLogDate();
       renderAll();
       showToast('Returned to full month view 📅');
     });
   }
 
   $('calendar-all-month-btn').addEventListener('click', () => {
-    if (state.calendarMode === 'months') {
-      state.calendarMode = 'days';
+    if (state.calendarMode === 'months' || state.calendarMode === 'day') {
+      state.calendarMode = 'month';
+      state.selectedDay = null;
+      if (!$('editing-expense-id').value) $('expense-date-input').value = defaultLogDate();
       renderAll();
-      showToast('Switched to Days view ☀️');
+      showToast('Switched to full Month view 📅');
     } else if (state.selectedDay) {
       state.selectedDay = null;
       if (!$('editing-expense-id').value) $('expense-date-input').value = defaultLogDate();
@@ -3310,7 +3665,18 @@ function initEventListeners() {
   $('expense-date-input').addEventListener('input', () => {
     setElementInvalid($('expense-date-input'), false);
     hideFormError();
+    updateFormDayTimings();
   });
+  $('expense-date-input').addEventListener('change', () => {
+    updateFormDayTimings();
+  });
+
+  if ($('expense-time-input')) {
+    $('expense-time-input').addEventListener('input', () => {
+      setElementInvalid($('expense-time-input'), false);
+      hideFormError();
+    });
+  }
 
   $('expense-note-input').addEventListener('input', () => {
     setElementInvalid($('expense-note-input'), false);
