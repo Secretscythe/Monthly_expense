@@ -79,6 +79,7 @@ const state = {
   currentUser: null,         // { id, name, email }
   currentDate: new Date(),   // month being viewed
   selectedDay: null,         // 'YYYY-MM-DD' or null (= whole month)
+  calendarMode: 'days',      // 'days' | 'months' (Toggle between day grid & 12-month grid)
   viewScope: 'month',        // 'month' | 'year' (View all months)
   entries: [],
   baseBalance: 2500,
@@ -1580,6 +1581,7 @@ function renderHeader() {
   $('current-month-label').textContent = monthName;
 
   const isAllYear = state.viewScope === 'year';
+  const isMonthsView = state.calendarMode === 'months';
   let viewLabel = monthName;
   if (state.selectedDay) {
     viewLabel = formatLongDate(state.selectedDay);
@@ -1590,13 +1592,42 @@ function renderHeader() {
   $('records-subtitle').textContent = `Showing records for ${viewLabel}`;
   $('category-chart-subtitle').textContent = `Expense distribution for ${viewLabel}`;
 
+  // Update Days vs Months Segmented Buttons
+  if ($('cal-toggle-days-btn')) {
+    $('cal-toggle-days-btn').classList.toggle('active', !isMonthsView);
+    $('cal-toggle-days-btn').setAttribute('aria-selected', !isMonthsView);
+  }
+  if ($('cal-toggle-months-btn')) {
+    $('cal-toggle-months-btn').classList.toggle('active', isMonthsView);
+    $('cal-toggle-months-btn').setAttribute('aria-selected', isMonthsView);
+  }
+
+  if ($('calendar-card-title')) {
+    $('calendar-card-title').textContent = isMonthsView ? `12-Month Calendar (${curYear})` : 'Monthly Calendar';
+  }
+  if ($('calendar-section-icon')) {
+    $('calendar-section-icon').textContent = isMonthsView ? '🗓️' : '📅';
+  }
+
   if ($('calendar-selected-label')) {
-    if (state.selectedDay) {
-      $('calendar-selected-label').textContent = `Selected: ${formatLongDate(state.selectedDay)} • Click "Reset to Full Month" to unselect`;
+    if (isMonthsView) {
+      $('calendar-selected-label').textContent = `Showing all 12 months for ${curYear} • Click any month to inspect its days & records`;
+    } else if (state.selectedDay) {
+      $('calendar-selected-label').textContent = `Selected Day: ${formatLongDate(state.selectedDay)} • Click "Full Month" to unselect`;
     } else if (isAllYear) {
       $('calendar-selected-label').textContent = `Showing Year ${curYear} • Records list displays all 12 months below`;
     } else {
-      $('calendar-selected-label').textContent = 'Showing all days • Click any day to inspect or log for that day';
+      $('calendar-selected-label').textContent = `Showing all days for ${monthName} • Click any day to inspect or log for that day`;
+    }
+  }
+
+  // Quick day nav bar updates
+  const dayNavBar = $('calendar-day-nav-bar');
+  if (dayNavBar) {
+    const showDayNav = !isMonthsView && Boolean(state.selectedDay);
+    dayNavBar.classList.toggle('hidden', !showDayNav);
+    if (showDayNav && $('calendar-day-nav-title')) {
+      $('calendar-day-nav-title').textContent = formatLongDate(state.selectedDay);
     }
   }
 
@@ -1604,7 +1635,13 @@ function renderHeader() {
   if ($('calendar-all-month-btn')) {
     const btnSpan = $('calendar-all-month-btn').querySelector('span');
     if (btnSpan) {
-      btnSpan.textContent = state.selectedDay ? `Reset (${monthName.split(' ')[0]})` : 'Choose Month ▾';
+      if (isMonthsView) {
+        btnSpan.textContent = `View Days (${monthName.split(' ')[0]}) ❯`;
+      } else if (state.selectedDay) {
+        btnSpan.textContent = `Full Month (${monthName.split(' ')[0]})`;
+      } else {
+        btnSpan.textContent = 'Choose Month ▾';
+      }
     }
   }
 
@@ -1622,12 +1659,28 @@ function renderHeader() {
   }
 }
 
-// ---------- Monthly calendar with individual days ----------
+// ---------- Calendar Rendering: Individual Days or 12-Month Overview ----------
 function renderCalendar() {
   const grid = $('calendar-grid');
+  if (!grid) return;
   grid.innerHTML = '';
   const year = state.currentDate.getFullYear();
   const month = state.currentDate.getMonth();
+  const isMonthsView = state.calendarMode === 'months';
+  const weekdaysEl = $('calendar-weekdays');
+
+  if (isMonthsView) {
+    if (weekdaysEl) weekdaysEl.classList.add('hidden');
+    grid.classList.add('months-view');
+    render12MonthsGrid(grid, year);
+  } else {
+    if (weekdaysEl) weekdaysEl.classList.remove('hidden');
+    grid.classList.remove('months-view');
+    renderDaysGrid(grid, year, month);
+  }
+}
+
+function renderDaysGrid(grid, year, month) {
   const firstWeekday = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const todayKey = toDateKey(new Date());
@@ -1667,6 +1720,76 @@ function renderCalendar() {
       ? `${formatLongDate(key)}\nIncome: ${formatCurrency(totals.add)}\nExpenses: ${formatCurrency(totals.deduct)}`
       : formatLongDate(key);
     cell.addEventListener('click', () => selectDay(key));
+    grid.appendChild(cell);
+  }
+}
+
+function render12MonthsGrid(grid, year) {
+  const now = new Date();
+  const currentMonthIdx = now.getFullYear() === year ? now.getMonth() : -1;
+  const activeMonthIdx = state.currentDate.getFullYear() === year ? state.currentDate.getMonth() : -1;
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  for (let m = 0; m < 12; m++) {
+    const prefix = `${year}-${pad(m + 1)}`;
+    const monthEntries = state.entries.filter(e => e.date && e.date.startsWith(prefix));
+    const income = sumAmounts(monthEntries.filter(e => e.type === 'add'));
+    const expenses = sumAmounts(monthEntries.filter(e => e.type === 'deduct'));
+    const net = income - expenses;
+    const isCurrent = m === currentMonthIdx;
+    const isSelected = m === activeMonthIdx;
+
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = `month-card-cell ${isCurrent ? 'current-month' : ''} ${isSelected ? 'selected-month' : ''}`;
+    cell.id = `cal-month-${year}-${pad(m + 1)}`;
+
+    let badges = '';
+    if (isCurrent) badges += `<span class="month-card-badge">Current</span>`;
+    if (isSelected && !isCurrent) badges += `<span class="month-card-badge" style="background: rgba(14, 165, 233, 0.25); color: #7dd3fc; border-color: rgba(14, 165, 233, 0.4);">Active</span>`;
+
+    cell.innerHTML = `
+      <div class="month-card-header">
+        <span class="month-card-title">${monthNames[m]}</span>
+        <div style="display:flex; gap: 4px; align-items:center;">
+          ${badges}
+        </div>
+      </div>
+      <div class="month-card-stats">
+        <div class="month-card-row">
+          <span>Income</span>
+          <span style="font-weight: 700; color: var(--accent-safe);">${income > 0 ? '+' : ''}${formatCurrency(income)}</span>
+        </div>
+        <div class="month-card-row">
+          <span>Expenses</span>
+          <span style="font-weight: 700; color: var(--accent-danger);">${expenses > 0 ? '-' : ''}${formatCurrency(expenses)}</span>
+        </div>
+        <div class="month-card-net">
+          <span style="color: var(--text-muted); font-size: 0.72rem;">Net</span>
+          <span style="color: ${net >= 0 ? 'var(--accent-safe)' : 'var(--accent-danger)'};">${formatSigned(net)}</span>
+        </div>
+      </div>
+      <div class="month-card-footer">
+        <span>${monthEntries.length} ${monthEntries.length === 1 ? 'record' : 'records'}</span>
+        <span class="month-card-drilldown">View Days ❯</span>
+      </div>
+    `;
+
+    cell.title = `${monthNames[m]} ${year}\nIncome: ${formatCurrency(income)}\nExpenses: ${formatCurrency(expenses)}\nNet: ${formatSigned(net)}\nClick to view days`;
+
+    cell.addEventListener('click', () => {
+      state.currentDate = new Date(year, m, 1);
+      state.selectedDay = null;
+      state.calendarMode = 'days';
+      if (!$('editing-expense-id').value) $('expense-date-input').value = defaultLogDate();
+      renderAll();
+      showToast(`Viewing ${monthNames[m]} ${year} 📅`);
+    });
+
     grid.appendChild(cell);
   }
 }
@@ -2824,9 +2947,30 @@ function deleteEntry(id) {
 // ========================================================
 
 function selectDay(key) {
+  state.calendarMode = 'days';
   state.selectedDay = state.selectedDay === key ? null : key;
   if (!$('editing-expense-id').value) $('expense-date-input').value = defaultLogDate();
   renderAll();
+  if (state.selectedDay) {
+    showToast(`Filtering view to ${formatLongDate(key)} ☀️`);
+  } else {
+    showToast('Showing full month view 📅');
+  }
+}
+
+function changeSelectedDay(delta) {
+  state.calendarMode = 'days';
+  if (!state.selectedDay) {
+    const now = new Date();
+    state.selectedDay = toDateKey(new Date(state.currentDate.getFullYear(), state.currentDate.getMonth(), now.getDate()));
+  }
+  const cur = parseDateKey(state.selectedDay);
+  cur.setDate(cur.getDate() + delta);
+  state.currentDate = new Date(cur.getFullYear(), cur.getMonth(), 1);
+  state.selectedDay = toDateKey(cur);
+  if (!$('editing-expense-id').value) $('expense-date-input').value = defaultLogDate();
+  renderAll();
+  showToast(`Viewing ${formatLongDate(state.selectedDay)} ☀️`);
 }
 
 function changeMonth(delta) {
@@ -3070,11 +3214,46 @@ function initEventListeners() {
     });
   }
 
+  // Calendar View Toggles: Days vs Months
+  if ($('cal-toggle-days-btn')) {
+    $('cal-toggle-days-btn').addEventListener('click', () => {
+      state.calendarMode = 'days';
+      renderAll();
+      showToast('Switched calendar to Days view ☀️');
+    });
+  }
+
+  if ($('cal-toggle-months-btn')) {
+    $('cal-toggle-months-btn').addEventListener('click', () => {
+      state.calendarMode = 'months';
+      state.selectedDay = null;
+      renderAll();
+      showToast('Switched calendar to 12-Month view 📅');
+    });
+  }
+
+  // Quick Day Nav Bar
+  if ($('cal-prev-day-btn')) $('cal-prev-day-btn').addEventListener('click', () => changeSelectedDay(-1));
+  if ($('cal-next-day-btn')) $('cal-next-day-btn').addEventListener('click', () => changeSelectedDay(1));
+  if ($('cal-today-day-btn')) $('cal-today-day-btn').addEventListener('click', jumpToToday);
+  if ($('cal-reset-day-btn')) {
+    $('cal-reset-day-btn').addEventListener('click', () => {
+      state.selectedDay = null;
+      renderAll();
+      showToast('Returned to full month view 📅');
+    });
+  }
+
   $('calendar-all-month-btn').addEventListener('click', () => {
-    if (state.selectedDay) {
+    if (state.calendarMode === 'months') {
+      state.calendarMode = 'days';
+      renderAll();
+      showToast('Switched to Days view ☀️');
+    } else if (state.selectedDay) {
       state.selectedDay = null;
       if (!$('editing-expense-id').value) $('expense-date-input').value = defaultLogDate();
       renderAll();
+      showToast('Returned to full month view 📅');
     } else {
       openMonthPicker();
     }

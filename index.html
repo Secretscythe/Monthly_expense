@@ -163,28 +163,60 @@
       </div>
     </header>
 
-    <!-- INTERACTIVE MONTHLY CALENDAR GRID (ACCOUNT FOR INDIVIDUAL DAYS) -->
+    <!-- INTERACTIVE MONTHLY CALENDAR GRID (ACCOUNT FOR INDIVIDUAL DAYS OR 12 MONTHS) -->
     <section class="glass-card calendar-card" id="calendar-section">
       <div class="calendar-top-bar">
         <div class="calendar-selected-info">
-          <span class="section-icon">📅</span>
+          <span class="section-icon" id="calendar-section-icon">📅</span>
           <div>
-            <h2 class="card-title" style="font-size: 1.05rem;">Monthly Calendar</h2>
+            <h2 class="card-title" id="calendar-card-title" style="font-size: 1.05rem;">Monthly Calendar</h2>
             <p id="calendar-selected-label" class="card-subtitle">Showing all days • Click any day to inspect or log for that day</p>
           </div>
         </div>
         <div class="calendar-actions">
+          <!-- Switch between Days and Months -->
+          <div class="calendar-view-segmented" role="tablist" aria-label="Switch calendar view">
+            <button type="button" id="cal-toggle-days-btn" class="segmented-btn active" role="tab" aria-selected="true" title="View individual days in this month">
+              <span>☀️ Days</span>
+            </button>
+            <button type="button" id="cal-toggle-months-btn" class="segmented-btn" role="tab" aria-selected="false" title="View all 12 months for this year">
+              <span>📅 Months</span>
+            </button>
+          </div>
+
           <button type="button" id="calendar-all-month-btn" class="pill-btn secondary-pill btn-sm" title="Reset selection or choose another month">
             <span>Reset to Full Month</span>
           </button>
-          <button type="button" id="calendar-all-months-toggle-btn" class="pill-btn secondary-pill btn-sm" title="Toggle between single month and all months in the year">
+          <button type="button" id="calendar-all-months-toggle-btn" class="pill-btn secondary-pill btn-sm hidden" title="Toggle between single month and all months in the year">
             <span>📅 View All Months</span>
           </button>
         </div>
       </div>
 
+      <!-- Quick Day Navigation Bar (Visible when a day is selected) -->
+      <div id="calendar-day-nav-bar" class="calendar-day-nav-bar hidden">
+        <div class="calendar-day-nav-info">
+          <span class="calendar-day-nav-badge">Selected Day</span>
+          <span id="calendar-day-nav-title" class="calendar-day-nav-text">Tuesday, October 20, 2026</span>
+        </div>
+        <div class="calendar-day-nav-actions">
+          <button type="button" id="cal-prev-day-btn" class="calendar-day-nav-btn" title="Previous day">
+            <span>❮ Prev Day</span>
+          </button>
+          <button type="button" id="cal-today-day-btn" class="calendar-day-nav-btn" title="Jump to today">
+            <span>Today</span>
+          </button>
+          <button type="button" id="cal-next-day-btn" class="calendar-day-nav-btn" title="Next day">
+            <span>Next Day ❯</span>
+          </button>
+          <button type="button" id="cal-reset-day-btn" class="calendar-day-nav-btn" style="background: rgba(99, 102, 241, 0.2); border-color: rgba(99, 102, 241, 0.4);" title="Show full month">
+            <span>✕ Full Month</span>
+          </button>
+        </div>
+      </div>
+
       <!-- 7 Day of Week Columns -->
-      <div class="calendar-weekdays">
+      <div id="calendar-weekdays" class="calendar-weekdays">
         <div>Sun</div>
         <div>Mon</div>
         <div>Tue</div>
@@ -194,7 +226,7 @@
         <div>Sat</div>
       </div>
 
-      <!-- Calendar Days Grid (Populated dynamically) -->
+      <!-- Calendar Grid (Populated dynamically with days or 12 months) -->
       <div id="calendar-grid" class="calendar-grid">
         <!-- Cells generated via JS -->
       </div>
