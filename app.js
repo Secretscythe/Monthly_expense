@@ -927,9 +927,8 @@ function handleSignUp(name, emailOrUsername, password, confirmPassword, preloadS
   setActiveSession(newUser, true);
   applyUserLogin(newUser, false);
   showToast(`🎉 Account created successfully! Welcome, ${newUser.name}!`);
-  showRecoveryCodeModal(newUser.email, recoveryCode);
 
-  // Dispatch welcome email with verification code via Gmail SMTP
+  // Dispatch welcome email with verification code in the background
   dispatchVerificationEmail(newUser.email, recoveryCode, 'signup').then(res => {
     if (res && res.success) {
       showToast(`✉️ Verification code emailed to ${newUser.email}!`);
@@ -970,12 +969,8 @@ async function dispatchVerificationEmail(email, code, type = 'reset') {
 }
 
 function showRecoveryCodeModal(email, code) {
-  if ($('modal-recovery-code-digits')) $('modal-recovery-code-digits').textContent = code;
-  if ($('modal-recovery-code-email')) $('modal-recovery-code-email').textContent = email;
-  const btnText = $('copy-recovery-code-btn-text');
-  if (btnText) btnText.textContent = 'Copy Code';
-  if ($('recovery-code-modal')) $('recovery-code-modal').classList.remove('hidden');
-  document.body.classList.add('auth-modal-open');
+  // Modal disabled: user proceeds directly into dashboard
+  closeRecoveryCodeModal();
 }
 
 function closeRecoveryCodeModal() {
